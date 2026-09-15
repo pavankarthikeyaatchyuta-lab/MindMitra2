@@ -78,8 +78,13 @@ export default function JudgeDemo() {
     setStepIndex(4); // 4. Real-time Adaptation & Office Kit Sync
 
     await new Promise(r => setTimeout(r, 300));
-    const pkt: OfficeKitPacket = {
+    const pkt: OfficeKitPacket = OfficeKitBridge.normalizePacket({
+      schemaVersion: '1.0',
       id: `pkt_${Date.now()}`,
+      profile: {
+        id: 1,
+        name: 'Rajesh Kumar ("Polayya")',
+      },
       profileId: 1,
       profileName: 'Rajesh Kumar ("Polayya")',
       timestamp: new Date().toISOString(),
@@ -103,6 +108,8 @@ export default function JudgeDemo() {
         latencyMs: mlRes.inference_latency_ms,
         confidence: mlRes.confidence,
         decision: mlRes.recommendation,
+        probabilities: mlRes.probabilities,
+        onDevice: true,
       },
       behavioralSignals: {
         firstInteractionLatencyMs: 1400,
@@ -110,7 +117,13 @@ export default function JudgeDemo() {
         repeatErrorRate: featA.repeat_error_rate,
         touchCount: 16,
       },
-    };
+      privacyMetadata: {
+        rawAudioRetained: false,
+        rawFramesRetained: false,
+        clientSideInference: true,
+        nonClinicalObservation: true,
+      },
+    })!;
     OfficeKitBridge.publishSummary(pkt);
     setOfficeKitPacket(pkt);
 
@@ -162,8 +175,13 @@ export default function JudgeDemo() {
     setStepIndex(4);
 
     await new Promise(r => setTimeout(r, 300));
-    const pkt: OfficeKitPacket = {
+    const pkt: OfficeKitPacket = OfficeKitBridge.normalizePacket({
+      schemaVersion: '1.0',
       id: `pkt_${Date.now()}`,
+      profile: {
+        id: 2,
+        name: 'Sunita Devi ("Leelu")',
+      },
       profileId: 2,
       profileName: 'Sunita Devi ("Leelu")',
       timestamp: new Date().toISOString(),
@@ -187,6 +205,8 @@ export default function JudgeDemo() {
         latencyMs: mlRes.inference_latency_ms,
         confidence: mlRes.confidence,
         decision: mlRes.recommendation,
+        probabilities: mlRes.probabilities,
+        onDevice: true,
       },
       behavioralSignals: {
         firstInteractionLatencyMs: 3600,
@@ -194,7 +214,13 @@ export default function JudgeDemo() {
         repeatErrorRate: featB.repeat_error_rate,
         touchCount: 24,
       },
-    };
+      privacyMetadata: {
+        rawAudioRetained: false,
+        rawFramesRetained: false,
+        clientSideInference: true,
+        nonClinicalObservation: true,
+      },
+    })!;
     OfficeKitBridge.publishSummary(pkt);
     setOfficeKitPacket(pkt);
 
@@ -256,6 +282,22 @@ export default function JudgeDemo() {
             </Link>
             <ThemeToggle />
           </div>
+        </div>
+
+        {/* Controlled Demo Banner */}
+        <div className="p-3.5 mb-6 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} className="text-amber-400 shrink-0" />
+            <span>
+              <strong>Notice:</strong> Controlled demonstration scenario — synthetic parameters used to test ML model & baseline pipelines deterministically.
+            </span>
+          </div>
+          <Link
+            to="/personal-pattern"
+            className="px-3 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs hover:bg-amber-400 shrink-0 transition-colors"
+          >
+            Live Touch Experience →
+          </Link>
         </div>
 
         {/* Scenario Selection Cards */}

@@ -1404,8 +1404,32 @@ def end_call(req: WebRTCSignalRequest, current=Depends(get_current_caregiver)):
 @app.post("/api/office-kit/publish")
 @app.post("/office-kit/publish")
 def publish_office_kit_packet(req: Dict[str, Any]):
-    pkt_id = str(req.get("id") or f"pkt_{int(datetime.datetime.now().timestamp() * 1000)}")
-    profile_id = int(req.get("profileId") or 1)
+    if not isinstance(req, dict):
+        raise HTTPException(status_code=422, detail="Invalid payload: expected JSON object")
+
+    pkt_id = req.get("id")
+    if not pkt_id or not str(pkt_id).strip():
+        raise HTTPException(status_code=422, detail="Invalid packet: missing required 'id'")
+    pkt_id = str(pkt_id).strip()
+
+    # Extract profile ID safely from top-level or profile object
+    profile_val = req.get("profileId")
+    if profile_val is None and isinstance(req.get("profile"), dict):
+        profile_val = req["profile"].get("id")
+
+    if profile_val is None:
+        raise HTTPException(status_code=422, detail="Invalid packet: missing required 'profileId'")
+
+    try:
+        profile_id = int(profile_val)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=422, detail="Invalid packet: profile ID must be an integer")
+
+    # Validate schemaVersion
+    schema_version = str(req.get("schemaVersion", "1.0"))
+    if schema_version not in ["1.0", "1"]:
+        raise HTTPException(status_code=422, detail=f"Unsupported schemaVersion: {schema_version}. Expected '1.0'")
+
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     with get_db() as conn:
         c = conn.cursor()
@@ -1414,7 +1438,18 @@ def publish_office_kit_packet(req: Dict[str, Any]):
             VALUES (?, ?, ?, ?)
         """, (pkt_id, profile_id, json.dumps(req), now))
         conn.commit()
-    return {"status": "published", "id": pkt_id, "timestamp": now}
+    return {"status": "published", "id": pkt_id, "schemaVersion": "1.0", "timestamp": now}
+
+
+@app.get("/api/health")
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "service": "MindMitra Behavioral Companion & Telemetry Layer",
+        "disclaimer": MEDICAL_DISCLAIMER
+    }
+
 
 @app.get("/api/office-kit/latest")
 @app.get("/office-kit/latest")

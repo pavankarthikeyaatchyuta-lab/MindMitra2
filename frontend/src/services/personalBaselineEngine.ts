@@ -32,6 +32,17 @@ export interface SessionEvidenceVector {
   timestamp: string;
 }
 
+// Named Baseline & Multi-Signal Deviation Thresholds
+export const BASELINE_THRESHOLDS = {
+  MIN_CALIBRATION_SESSIONS: 3,
+  MEANINGFUL_ACCURACY_DROP: -0.15, // Drop >= 15% from personal median
+  MEANINGFUL_LATENCY_INCREASE_PCT: 0.35, // Slower by >= 35%
+  MEANINGFUL_CORRECTIONS_DELTA: 2, // At least 2 more corrections than median
+  MEANINGFUL_CORRECTIONS_ABSOLUTE: 4, // 4 or more corrections in a session
+  MINOR_ACCURACY_DROP: -0.08, // Mild drop >= 8%
+  MINOR_LATENCY_INCREASE_PCT: 0.25, // Slower by >= 25%
+} as const;
+
 const STORAGE_KEY_PREFIX = 'mindmitra_personal_baseline_';
 const HISTORY_KEY_PREFIX = 'mindmitra_profile_history_';
 
@@ -44,10 +55,21 @@ export class PersonalBaselineEngine {
       const key = `${HISTORY_KEY_PREFIX}${userId}_${domain}`;
       const saved = localStorage.getItem(key);
       if (!saved) return [];
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Clears session history for a profile (e.g. for re-calibration or testing).
+   */
+  public static clearSessionHistory(userId: number, domain: string = 'overall'): void {
+    try {
+      const key = `${HISTORY_KEY_PREFIX}${userId}_${domain}`;
+      localStorage.removeItem(key);
+    } catch {}
   }
 
   /**
@@ -93,6 +115,8 @@ export class PersonalBaselineEngine {
 
   /**
    * Evaluates the current session against the profile's established personal baseline.
+   * Multi-signal requirement: Meaningful deviation requires accuracy degradation AND
+   * (latency increase OR elevated correction frequency). Never a single bad score.
    */
   public static evaluateAgainstBaseline(
     userId: number,
@@ -102,8 +126,8 @@ export class PersonalBaselineEngine {
     const history = this.getSessionHistory(userId, domain);
     const count = history.length;
 
-    // State 1: Baseline Calibration in Progress (< 3 sessions)
-    if (count < 3) {
+    // State 1: Baseline Calibration in Progress (< MIN_CALIBRATION_SESSIONS)
+    if (count < BASELINE_THRESHOLDS.MIN_CALIBRATION_SESSIONS) {
       return {
         userId,
         domain,
@@ -115,7 +139,7 @@ export class PersonalBaselineEngine {
         baselineStdDev: 0.05,
         status: 'CALIBRATING',
         statusLabel: 'Baseline Calibration in Progress',
-        trendDescription: `Learning your usual pattern... (${count} of 5 calibration sessions recorded).`,
+        trendDescription: `Learning your usual pattern... (${count} of ${BASELINE_THRESHOLDS.MIN_CALIBRATION_SESSIONS} calibration sessions recorded).`,
         reasonCodes: ['baseline_calibrating'],
         lastUpdated: new Date().toISOString(),
       };
@@ -141,16 +165,18 @@ export class PersonalBaselineEngine {
     const reasons: string[] = [];
 
     // Meaningful Deviation: Multi-signal degradation beyond personal variance
-    // Condition: Accuracy drop >= 15% AND (latency increased >= 35% OR corrections tripled)
+    // Condition: Accuracy drop >= 15% AND (latency increased >= 35% OR corrections elevated)
     const isMeaningful = (
-      accDelta <= -0.15 &&
-      (latencyPctChange >= 0.35 || corrDelta >= 3 || currentSession.corrections >= 4)
+      accDelta <= BASELINE_THRESHOLDS.MEANINGFUL_ACCURACY_DROP &&
+      (latencyPctChange >= BASELINE_THRESHOLDS.MEANINGFUL_LATENCY_INCREASE_PCT || 
+       corrDelta >= BASELINE_THRESHOLDS.MEANINGFUL_CORRECTIONS_DELTA || 
+       currentSession.corrections >= BASELINE_THRESHOLDS.MEANINGFUL_CORRECTIONS_ABSOLUTE)
     );
 
     // Minor Deviation: Slower response or mild drop within tolerance
     const isMinor = (
-      (accDelta <= -0.08 && accDelta > -0.15) ||
-      (latencyPctChange >= 0.25 && latencyPctChange < 0.35)
+      (accDelta <= BASELINE_THRESHOLDS.MINOR_ACCURACY_DROP && accDelta > BASELINE_THRESHOLDS.MEANINGFUL_ACCURACY_DROP) ||
+      (latencyPctChange >= BASELINE_THRESHOLDS.MINOR_LATENCY_INCREASE_PCT && latencyPctChange < BASELINE_THRESHOLDS.MEANINGFUL_LATENCY_INCREASE_PCT)
     );
 
     let status: 'CALIBRATING' | 'NORMAL' | 'MINOR_DEVIATION' | 'MEANINGFUL_DEVIATION' = 'NORMAL';
@@ -161,9 +187,11 @@ export class PersonalBaselineEngine {
       status = 'MEANINGFUL_DEVIATION';
       statusLabel = 'Meaningful Deviation';
       description = 'Recent interaction is outside the established personal baseline.';
-      if (accDelta <= -0.15) reasons.push('lower_task_accuracy');
-      if (latencyPctChange >= 0.35) reasons.push('slower_response_latency');
-      if (corrDelta >= 2) reasons.push('increased_corrections');
+      if (accDelta <= BASELINE_THRESHOLDS.MEANINGFUL_ACCURACY_DROP) reasons.push('lower_task_accuracy');
+      if (latencyPctChange >= BASELINE_THRESHOLDS.MEANINGFUL_LATENCY_INCREASE_PCT) reasons.push('slower_response_latency');
+      if (corrDelta >= BASELINE_THRESHOLDS.MEANINGFUL_CORRECTIONS_DELTA || currentSession.corrections >= BASELINE_THRESHOLDS.MEANINGFUL_CORRECTIONS_ABSOLUTE) {
+        reasons.push('increased_corrections');
+      }
     } else if (isMinor) {
       status = 'MINOR_DEVIATION';
       statusLabel = 'Minor Deviation Observed';
@@ -175,6 +203,7 @@ export class PersonalBaselineEngine {
       description = 'Your rhythm, accuracy, and cadence match your established baseline.';
       reasons.push('performance_stable');
     }
+
 
     return {
       userId,

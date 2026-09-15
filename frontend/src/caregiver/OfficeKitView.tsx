@@ -39,7 +39,8 @@ export default function OfficeKitView() {
       setLatestPacket(current);
     } else {
       // Provide initial mock packet if phone hasn't run yet
-      const samplePacket: OfficeKitPacket = {
+      const samplePacket: OfficeKitPacket = OfficeKitBridge.normalizePacket({
+        schemaVersion: '1.0',
         id: 'sample_1',
         profileId: 2,
         profileName: 'Sunita Devi',
@@ -71,7 +72,7 @@ export default function OfficeKitView() {
           repeatErrorRate: 0.18,
           touchCount: 22,
         },
-      };
+      })!;
       setLatestPacket(samplePacket);
     }
 

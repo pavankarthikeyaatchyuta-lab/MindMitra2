@@ -16,7 +16,7 @@
     "networkOfflineState": "Airplane Mode (100% disconnected)",
     "medianInferenceLatencyMs": 0,
     "p95InferenceLatencyMs": 0.1,
-    "endToEndAdaptationLatencyMs": 1.51,
-    "officeKitSyncLatencyMs": 133.61
+    "endToEndAdaptationLatencyMs": 1.49,
+    "officeKitSyncLatencyMs": 150.89
   }
 }

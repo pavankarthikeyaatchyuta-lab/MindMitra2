@@ -130,15 +130,15 @@ export default function PersonalPatternExperience() {
   };
 
   // Process Completed Camera Recall
-  const handleCameraComplete = (success: boolean, latencyMs: number) => {
+  const handleCameraComplete = (success: boolean, latencyMs: number, recallType?: 'self_confirmed' | 'assisted') => {
     const approxTouch: TouchBehavioralVector = {
       first_interaction_latency_ms: latencyMs,
       mean_inter_tap_latency_ms: latencyMs,
       response_time_variance: 0.10,
-      hesitation_count: 0,
+      hesitation_count: recallType === 'assisted' ? 2 : 0,
       repeat_error_rate: 0.0,
-      correction_rate: 0.0,
-      completion_time_ms: latencyMs + 2000,
+      correction_rate: recallType === 'assisted' ? 0.3 : 0.0,
+      completion_time_ms: latencyMs + 1000,
       accuracy: success ? 1.0 : 0.5,
       total_taps: 1,
       current_difficulty: currentDifficulty,
@@ -190,13 +190,35 @@ export default function PersonalPatternExperience() {
     }
     setAdaptedDifficulty(nextDiff);
 
-    // 5. Broadcast to Office Kit Laptop Bridge
-    const officeKitPacket: OfficeKitPacket = {
+    // 5. Broadcast to Office Kit Laptop Bridge (Structured v1.0 Packet)
+    const officeKitPacket: OfficeKitPacket = OfficeKitBridge.normalizePacket({
+      schemaVersion: '1.0',
       id: `pkt_${Date.now()}`,
+      profile: {
+        id: activeUserId,
+        name: selectedUser?.display_name || selectedUser?.name || 'Elderly Profile',
+      },
       profileId: activeUserId,
       profileName: selectedUser?.display_name || selectedUser?.name || 'Elderly Profile',
       timestamp: new Date().toISOString(),
       deviceSource: 'iQOO Phone (On-Device Inference)',
+      session: {
+        id: `sess_${Date.now()}`,
+        activityType: activityMode.toUpperCase(),
+        accuracy: tVector.accuracy,
+        latencyMs: tVector.mean_inter_tap_latency_ms,
+        completionTimeMs: tVector.completion_time_ms,
+        corrections: sessionVector.corrections,
+        repeatErrors: sessionVector.repeat_errors,
+      },
+      baseline: {
+        eligibleSessionCount: history.length,
+        medianAccuracy: bMetrics.baselineMedianAccuracy,
+        medianLatencyMs: bMetrics.baselineMedianLatencyMs,
+        medianCorrections: bMetrics.baselineMedianCorrections,
+        status: bMetrics.status,
+        statusLabel: bMetrics.status === 'MEANINGFUL_DEVIATION' ? 'Meaningful Deviation' : bMetrics.status === 'MINOR_DEVIATION' ? 'Minor Variation' : 'Aligned with Personal Pattern',
+      },
       baselineAccuracy: bMetrics.baselineMedianAccuracy,
       sessionAccuracy: tVector.accuracy,
       baselineLatencyMs: bMetrics.baselineMedianLatencyMs,
@@ -205,6 +227,13 @@ export default function PersonalPatternExperience() {
       sessionCorrections: sessionVector.corrections,
       status: bMetrics.status,
       primarySignals: bMetrics.reasonCodes.map(r => r.replace(/_/g, ' ')),
+      deviation: {
+        status: bMetrics.status,
+        isMeaningful: bMetrics.status === 'MEANINGFUL_DEVIATION',
+        primarySignals: bMetrics.reasonCodes.map(r => r.replace(/_/g, ' ')),
+        reasonCodes: bMetrics.reasonCodes,
+        trendDescription: bMetrics.status === 'MEANINGFUL_DEVIATION' ? 'Meaningful deviation from personal baseline' : 'Interaction aligns with personal pattern',
+      },
       adaptation: {
         recommendedDifficulty: nextDiff,
         previousDifficulty: currentDifficulty,
@@ -216,6 +245,16 @@ export default function PersonalPatternExperience() {
         latencyMs: mlDecision.inference_latency_ms,
         confidence: mlDecision.confidence,
         decision: mlDecision.recommendation,
+        probabilities: mlDecision.probabilities,
+        onDevice: true,
+      },
+      mlDecision: {
+        model: mlDecision.model_name,
+        decision: mlDecision.recommendation,
+        confidence: mlDecision.confidence,
+        probabilities: mlDecision.probabilities,
+        inferenceLatencyMs: mlDecision.inference_latency_ms,
+        onDevice: true,
       },
       behavioralSignals: {
         firstInteractionLatencyMs: tVector.first_interaction_latency_ms,
@@ -224,7 +263,13 @@ export default function PersonalPatternExperience() {
         touchCount: tVector.total_taps,
         voiceSequenceCompleteness: vVector?.sequence_completeness,
       },
-    };
+      privacyMetadata: {
+        rawAudioRetained: false,
+        rawFramesRetained: false,
+        clientSideInference: true,
+        nonClinicalObservation: true,
+      },
+    })!;
 
     OfficeKitBridge.publishSummary(officeKitPacket);
     setSyncedPacket(officeKitPacket);
@@ -309,6 +354,11 @@ export default function PersonalPatternExperience() {
 
             {/* Hero Card: "The phone learns your pattern." */}
             <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-800 to-slate-800/90 border border-slate-700 shadow-xl text-center mb-5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-950/80 border border-blue-500/30 text-[10px] text-blue-300 font-bold mb-3">
+                <ShieldCheck size={12} className="text-blue-400" />
+                <span>Demo profile — representative historical sessions</span>
+              </div>
+
               <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 mx-auto mb-3">
                 <Brain size={26} />
               </div>
@@ -438,6 +488,32 @@ export default function PersonalPatternExperience() {
         {/* STEP: On-Device Evaluation & Killer Adaptation Moment */}
         {step === 'evaluation' && (
           <div className="flex flex-col animate-in fade-in">
+            {/* 4-Stage Core Adaptive Architecture Status Indicator */}
+            <div className="mb-3 p-3 rounded-2xl bg-slate-950/90 border border-slate-800 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 border-b border-slate-800 pb-1">
+                <span className="text-blue-400">Core Adaptation Loop</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black border border-amber-500/40">LIVE SESSION</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px] font-bold">
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
+                  <span className="text-emerald-400 font-black">✓ [SENSE]</span>
+                  <span className="truncate">Touch & Cadence</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
+                  <span className="text-emerald-400 font-black">✓ [LOCAL AI]</span>
+                  <span className="truncate">{inferenceResult?.recommendation || 'Evaluated'}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
+                  <span className="text-emerald-400 font-black">✓ [BASELINE]</span>
+                  <span className="truncate">{baselineMetrics?.status?.replace('_', ' ') || 'Compared'}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
+                  <span className="text-indigo-400 font-black">⚡ [ADAPT]</span>
+                  <span className="truncate">Lvl {adaptedDifficulty}</span>
+                </div>
+              </div>
+            </div>
+
             {/* On-Device ML Badge */}
             <div className="flex justify-between items-center mb-3 px-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold">

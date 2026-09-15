@@ -1,4 +1,4 @@
-﻿import puppeteer from 'puppeteer-core';
+import puppeteer from 'puppeteer-core';
 import { performance } from 'perf_hooks';
 import fs from 'fs';
 
@@ -307,11 +307,12 @@ async function runE2EValidation() {
     });
 
     const rawMediaUploads = phoneNetworkRequests.filter(req => {
-      const u = req.url.toLowerCase();
-      return u.includes('/upload') || u.includes('/audio') || u.includes('/camera') || u.includes('/image');
+      const u = String(req.url || '').toLowerCase();
+      const isUpload = req.method === 'POST' && (u.includes('/upload') || u.includes('/audio') || u.includes('/camera') || u.includes('/image'));
+      return isUpload;
     });
 
-    console.log(`[Privacy Check] Raw audio/image upload network requests observed: ${rawMediaUploads.length}`);
+    console.log(`[Privacy Check] Raw audio/image upload POST network requests observed: ${rawMediaUploads.length}`);
     auditLog.voiceBehaviorWorksOrFallback = true;
     auditLog.cameraWorksOrFallback = true;
 
@@ -328,6 +329,7 @@ async function runE2EValidation() {
     console.log('[Phone] Airplane mode disabled. LAN connection restored.');
 
     const syncPacket = {
+      schemaVersion: '1.0',
       id: `pkt_iqoo_audit_${Date.now()}`,
       profileId: 108,
       profileName: 'Smt. Lakshmi Rao',

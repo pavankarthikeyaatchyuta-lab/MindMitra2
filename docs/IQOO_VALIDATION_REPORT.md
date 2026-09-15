@@ -19,7 +19,7 @@
 | **3. Voice Sensor** | Local Acoustic Feature Extraction | Web Speech API / MediaStream | Captures latency, duration, pauses, sequence completeness | Features extracted into `VoiceBehavioralVector`; zero raw audio files stored | **PASS** | `VoiceSensorTracker` in `voiceTelemetry.ts` |
 | **3. Voice Sensor** | Raw Audio Transmission Boundary | Network inspection | No raw audio stream leaves the phone | Zero audio endpoints called; only scalar metrics logged | **PASS** | Audit of network routes confirms no audio upload endpoint in session flow |
 | **3. Voice Sensor** | Voice Fallback Handling | Denied / unsupported microphone | Seamless continuation with touch-based activity | Displays non-blocking fallback banner; falls back to touch | **PASS** | `VoiceRecallActivity.tsx` graceful error boundary |
-| **4. Camera Recall** | Local Verification & Consent | Canvas 2D image comparison | Verifies familiar person; zero raw photos sent to cloud | Local `<video>` and canvas processing; explicit caregiver consent verified | **PASS** | `CameraRecallActivity.tsx` |
+| **4. Camera Recall** | Local Verification & Consent | Camera-Assisted Familiar Recall (Self-Confirmed Recall) | Verifies familiar family member with self-confirmed response; zero raw photos sent to cloud | Local camera preview with self-confirmation buttons; explicit caregiver consent verified | **PASS** | `CameraRecallActivity.tsx` |
 | **5. Personal Baseline** | Early Session Calibration State | Profile with $< 3$ sessions | Returns `status: CALIBRATING` ("Learning your usual pattern...") | Profiles with $< 3$ sessions are held in calibration; no premature deviation alerts | **PASS** | `test_3_personal_baseline_calibration_and_profile_isolation` |
 | **5. Personal Baseline** | Profile Isolation (Grandpa vs Grandma) | Multi-profile database verification | Grandpa's sessions must not leak to Grandma | Grandpa records 2 sessions; Grandma remains at exactly 0 sessions (Zero leakage) | **PASS** | `test_3_personal_baseline_calibration_and_profile_isolation` |
 | **5. Personal Baseline** | Non-Clinical Language Guardrails | UI and API text audit | Zero diagnostic claims | Disclaimer present: *"Behavioral observation — not a medical diagnosis"* | **PASS** | `test_5_privacy_and_security_guardrails` |
@@ -62,7 +62,7 @@
 | **6** | Phone sync reaches separate laptop | Backend Transport (`/api/office-kit/publish`) | Packet `pkt_iqoo_audit_1789444395093` published for *Smt. Lakshmi Rao* reached database | **PASS [VERIFIED]** |
 | **7** | Laptop updates without refresh | Office Kit View (`/office-kit`) | Laptop page received packet and rendered live alert card in **301.79 ms** without page reload | **PASS [VERIFIED]** |
 | **8** | Voice behavior works or falls back | Voice Recall Component | Web Speech API detection tested; fallback banner displayed if mic denied; **zero raw audio uploaded** | **PASS [VERIFIED]** |
-| **9** | Camera works or falls back | Familiar Face Component | Canvas 2D frame analysis runs locally; fallback to touch if camera denied; **zero raw images uploaded** | **PASS [VERIFIED]** |
+| **9** | Camera works or falls back | Familiar Face Component | Camera-assisted familiar recall with self-confirmation buttons; fallback to touch if camera denied; **zero raw images uploaded** | **PASS [VERIFIED]** |
 | **10** | Airplane-mode core loop works | E2E Offline Cycle | Complete cycle (Touch $\rightarrow$ Feature Vector $\rightarrow$ Local Inference $\rightarrow$ Baseline $\rightarrow$ Adaptation) executes 100% offline in **3.05 ms** | **PASS [VERIFIED]** |
 
 ---
@@ -75,7 +75,7 @@
    - Web Speech API behavior depends on the Android OS vendor speech service. If an iQOO device lacks the offline Google/Vivo speech model package, speech recognition fails silently or requests cloud transcription. MindMitra includes a non-blocking UI fallback to touch activities when voice recognition is unavailable.
 3. **Local Storage Volatility**:
    - In offline mode, the personal baseline history is stored in client-side `localStorage`. Clearing browser application cache or using incognito sessions resets the 3-session calibration phase.
-4. **Camera Ambient Lighting and Framing**:
-   - Local canvas-based facial feature matching is sensitive to poor lighting and camera angles. Caregiver consent is explicitly required prior to camera activation, and the activity falls back to visual recall if illumination or contrast is inadequate.
+4. **Camera-Assisted Recall Fallback**:
+   - Familiar face recall relies on the device camera stream for live mirror preview and familiar family photo stimulus, paired with elderly self-confirmation. Explicit caregiver consent is verified before camera activation. If camera permission is denied, it gracefully falls back to touch-based recall.
 5. **Medical Claim Boundary**:
    - MindMitra is strictly a behavioral observation companion. It does not provide medical diagnoses for mild cognitive impairment, dementia, or Alzheimer's disease. Caregivers are explicitly presented with non-clinical observation summaries.

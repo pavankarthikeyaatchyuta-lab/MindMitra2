@@ -49,22 +49,11 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
   };
 
   const handleFinish = () => {
-    if (resultVector) {
+    if (resultVector && resultVector.word_count > 0) {
       onComplete(resultVector);
     } else {
-      // Fallback dummy completed vector if user finished manually
-      const fallbackVector: VoiceBehavioralVector = {
-        response_latency_ms: 1850,
-        speech_duration_ms: 4200,
-        pause_duration_ms: 600,
-        number_of_pauses: 1,
-        sequence_completeness: 1.0,
-        task_completion: true,
-        transcript_confidence: 0.92,
-        word_count: 8,
-        timestamp: new Date().toISOString(),
-      };
-      onComplete(fallbackVector);
+      // Do not fabricate fake telemetry when voice recognition produces no results
+      onCancel();
     }
   };
 
@@ -72,7 +61,7 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
     <div className="card p-6 sm:p-8 max-w-xl mx-auto text-center animate-in fade-in">
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold uppercase tracking-wider mb-4 border border-purple-200 dark:border-purple-800">
         <Sparkles size={14} />
-        <span>Verbal Sequence Recall (Edge Processing)</span>
+        <span>Voice Behavioral Signals (Device Speech Interface)</span>
       </div>
 
       <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
@@ -104,10 +93,10 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
 
         <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-3">
           {status === 'idle' && 'Tap the button below and speak clearly'}
-          {status === 'listening' && 'Listening for your voice...'}
+          {status === 'listening' && 'Listening through device speech interface...'}
           {status === 'speaking' && 'Detecting speech cadence & pauses...'}
-          {status === 'completed' && 'Speech analyzed on device ✓'}
-          {status === 'error' && 'Voice detection paused'}
+          {status === 'completed' && 'Speech behavioral metrics recorded ✓'}
+          {status === 'error' && 'Voice detection unavailable'}
         </p>
       </div>
 
@@ -128,7 +117,7 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
       )}
 
       {/* Signal Vector Preview if completed */}
-      {resultVector && (
+      {resultVector && resultVector.word_count > 0 && (
         <div className="grid grid-cols-3 gap-2 mb-6 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center text-xs">
           <div>
             <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold">First Latency</span>
@@ -139,44 +128,54 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
             <span className="font-extrabold text-slate-900 dark:text-white">{(resultVector.speech_duration_ms / 1000).toFixed(1)}s</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold">Hesitation Pauses</span>
-            <span className="font-extrabold text-slate-900 dark:text-white">{resultVector.number_of_pauses}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold">Word Count</span>
+            <span className="font-extrabold text-slate-900 dark:text-white">{resultVector.word_count} words</span>
           </div>
         </div>
       )}
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-        {status !== 'completed' ? (
-          <>
-            <button
-              onClick={handleStart}
-              className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2"
-            >
-              <Mic size={18} />
-              <span>{status === 'listening' ? 'Listening...' : 'Start Voice Recall'}</span>
-            </button>
-            <button
-              onClick={onCancel}
-              className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              Continue with Touch Only
-            </button>
-          </>
-        ) : (
+        {status === 'idle' && (
+          <button
+            onClick={handleStart}
+            className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2"
+          >
+            <Mic size={18} />
+            <span>Tap to Speak</span>
+          </button>
+        )}
+
+        {(status === 'listening' || status === 'speaking') && (
+          <button
+            onClick={() => trackerRef.current.stop()}
+            className="w-full sm:w-auto py-3 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm"
+          >
+            Done Speaking
+          </button>
+        )}
+
+        {status === 'completed' && resultVector && resultVector.word_count > 0 && (
           <button
             onClick={handleFinish}
-            className="w-full sm:w-auto elderly-btn-primary py-3 px-8 text-sm font-bold flex items-center justify-center gap-2"
+            className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2"
           >
-            <span>Proceed to Personal Pattern Evaluation</span>
+            <span>Continue with Results</span>
             <ArrowRight size={18} />
           </button>
         )}
+
+        <button
+          onClick={onCancel}
+          className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          Switch to Touch Mode
+        </button>
       </div>
 
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-4">
-        🔒 Audio is analyzed locally on device. No voice recordings are uploaded to external clouds.
-      </p>
+      <div className="mt-4 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+        🔒 <strong>Speech Privacy & Architecture</strong>: Behavioral voice metrics (reaction latency, duration, pauses) are computed in local memory through the browser/device speech recognition interface. Zero raw audio recordings are stored or transmitted by MindMitra.
+      </div>
     </div>
   );
 }

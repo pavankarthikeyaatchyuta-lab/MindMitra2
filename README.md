@@ -320,17 +320,17 @@ MindMitra 2.0 was specifically validated under an Android 14 / vivo iQOO Neo9 Pr
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **On-Device Random Forest**: Real 35-tree ensemble converted from Scikit-Learn into JSON and executed directly in client memory with zero cloud network overhead.
+1. **On-Device Random Forest**: Real 35-tree ensemble converted from Scikit-Learn into JSON and executed directly in phone browser memory (V8 runtime) with zero cloud network overhead and sub-millisecond tree traversal.
 2. **Sensory Behavioral Telemetry**:
-   - **Touch**: Real touch events capture reaction latency, inter-tap cadence, hesitation intervals ($\ge 3$s), and repeat error rates.
-   - **Voice**: Verbal recall measures cadence and pause durations locally; zero raw audio files are stored or uploaded.
-   - **Camera**: Local 2D canvas face recognition for familiar person verification; zero camera frames leave the device.
+   - **Touch**: Real touch events capture reaction latency, inter-tap cadence, hesitation intervals ($\ge 3$s), and repeat error rates across a 9-feature standardized vector.
+   - **Voice**: Verbal recall measures speech onset latency, response duration, and pause count via device speech interface; zero raw audio files leave the device, and missing/failed speech gracefully falls back to touch mode without fabricated telemetry.
+   - **Camera**: Camera-Assisted Familiar Recall presents familiar family photos alongside client-side camera preview for self-confirmed recall; zero raw camera frames leave the device.
 3. **Personal Baseline Guardrails**:
    - Minimum 3 sessions required before deviation flags are active (`CALIBRATING` state).
    - Strict profile isolation ensures Grandma's metrics never cross-contaminate Grandpa's baseline.
    - Non-clinical behavioral observation terminology throughout.
-4. **Office Kit Cross-Device Live Sync**: Real-time broadcast from elderly phone (`/personal-pattern`) to caregiver laptop (`/office-kit`) via background transport without refreshing the browser.
-5. **Interactive Judge Demo**: Instant verification of Normal vs. Degraded scenarios at `/judge-demo`.
+4. **Office Kit Cross-Device Live Sync**: Real-time broadcast from elderly phone (`/personal-pattern`) to caregiver laptop (`/office-kit`) via background transport without refreshing the browser (`schemaVersion: "1.0"`).
+5. **Interactive Judge Demo**: Controlled demonstration scenario testing ML model and baseline pipelines deterministically at `/judge-demo`. Primary interactive experience is at `/personal-pattern`.
 
 ---
 

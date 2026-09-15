@@ -261,3 +261,85 @@ def test_5_privacy_and_security_guardrails():
     assert "explanation" in data
     assert "disclaimer" in data
     assert "not a medical diagnosis" in data["disclaimer"].lower() or "not a medical diagnosis" in data["explanation"].lower()
+
+
+def test_6_office_kit_publish_validation_and_rejection():
+    """
+    Test 6: Verify Office Kit publish endpoint rejects malformed packets with 422 and handles duplicates idempotently.
+    """
+    # 1. Missing ID
+    res1 = client.post("/api/office-kit/publish", json={"profileId": 1, "status": "NORMAL"})
+    assert res1.status_code == 422
+
+    # 2. Missing Profile ID
+    res2 = client.post("/api/office-kit/publish", json={"id": "pkt_invalid_no_profile"})
+    assert res2.status_code == 422
+
+    # 3. Non-dictionary body
+    res3 = client.post("/api/office-kit/publish", content="not a json", headers={"Content-Type": "application/json"})
+    assert res3.status_code == 422
+
+    # 4. Valid packet with schemaVersion: "1.0"
+    valid_pkt = {
+        "schemaVersion": "1.0",
+        "id": "pkt_valid_schema_test_42",
+        "profileId": 1,
+        "profile": {"id": 1, "name": "Rajesh Kumar"},
+        "timestamp": "2026-09-15T12:00:00Z",
+        "deviceSource": "iQOO Phone (On-Device Inference)",
+        "baselineAccuracy": 0.88,
+        "sessionAccuracy": 0.85,
+        "baselineLatencyMs": 2000,
+        "sessionLatencyMs": 2100,
+        "baselineCorrections": 1,
+        "sessionCorrections": 1,
+        "status": "NORMAL",
+        "primarySignals": ["stable"],
+        "adaptation": {
+            "recommendedDifficulty": 3,
+            "previousDifficulty": 3,
+            "action": "Maintain level",
+            "reason": "Stable pattern"
+        },
+        "onDeviceML": {
+            "model": "MindMitra-RF-Mobile (35 Trees)",
+            "latencyMs": 0.05,
+            "confidence": 0.9,
+            "decision": "MAINTAIN"
+        },
+        "behavioralSignals": {
+            "firstInteractionLatencyMs": 1500,
+            "hesitationCount": 0,
+            "repeatErrorRate": 0.0,
+            "touchCount": 12
+        }
+    }
+    res4 = client.post("/api/office-kit/publish", json=valid_pkt)
+    assert res4.status_code == 200
+    assert res4.json()["status"] == "published"
+
+    # 5. Duplicate packet should be accepted idempotently
+    res5 = client.post("/api/office-kit/publish", json=valid_pkt)
+    assert res5.status_code == 200
+
+
+def test_7_unauthorized_endpoints():
+    """
+    Test 7: Verify unauthenticated requests to protected endpoints are rejected with 401.
+    """
+    # Protected endpoint without authorization header
+    res = client.post("/api/auth/change-password", json={"current_password": "old", "new_password": "new"})
+    assert res.status_code == 401, f"Expected 401 for unauthorized password change, got {res.status_code}"
+
+
+def test_8_non_diagnostic_medical_disclaimer_presence():
+    """
+    Test 8: Verify system health and info endpoints do not claim medical diagnosis.
+    """
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ok"
+    assert "disclaimer" in data
+    assert "not a medical diagnosis" in data["disclaimer"].lower() or "behavioral" in data["disclaimer"].lower()
+
