@@ -1,0 +1,80 @@
+{
+  "common": {
+    "app_name": "MindMitra",
+    "tagline": "An AI companion for cognitive wellbeing.",
+    "start": "Start",
+    "next": "Next",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "done": "Done",
+    "loading": "Loading...",
+    "listen": "Listen",
+    "mute": "Mute",
+    "voice_unavailable": "Voice unavailable in browser"
+  },
+  "welcome": {
+    "title": "Welcome to MindMitra",
+    "subtitle": "Exploring the universe of the mind.",
+    "start_session": "Start Daily Session",
+    "caregiver_dashboard": "Caregiver Dashboard",
+    "language": "Language",
+    "accessibility": "Accessibility",
+    "voice": "Voice Assistant"
+  },
+  "onboarding": {
+    "title": "Create Your Profile",
+    "name": "What is your name?",
+    "age": "How old are you?",
+    "language": "Preferred Language",
+    "voice": "Enable Voice Assistant",
+    "continue": "Continue",
+    "select_user": "Select User",
+    "create_new": "Create New User"
+  },
+  "session": {
+    "todays_session": "Today's Exercises",
+    "game_1_title": "Memory Match",
+    "game_2_title": "Daily Routine",
+    "game_3_title": "Object & Familiar Person Recognition",
+    "game_4_title": "Pattern Recall",
+    "session_complete": "Session Complete!",
+    "great_work": "Great work today!",
+    "try_another": "Try Another Game",
+    "lets_continue": "Let's Continue",
+    "view_results": "View Results"
+  },
+  "games": {
+    "memory": {
+      "title": "Memory Match",
+      "description": "Find the matching pairs of celestial cards.",
+      "instructions": "Tap two cards to flip them. Remember their positions and match all pairs."
+    },
+    "routine": {
+      "title": "Daily Routine Recall",
+      "description": "Memorize the schedule order and arrange the steps in sequence.",
+      "instructions": "First, observe and memorize the steps shown. Then arrange them in the exact order you saw."
+    },
+    "recognition": {
+      "title": "Object & Familiar Person Recognition",
+      "description": "Identify objects from images alone, and recognize familiar family members.",
+      "instructions": "Look at the image choices and select the one that answers the question."
+    },
+    "pattern": {
+      "title": "Pattern Recall",
+      "description": "Observe the constellation pattern and select the matching arrangement.",
+      "instructions": "Memorize the pattern before time runs out, then select the matching pattern."
+    }
+  },
+  "reminders": {
+    "medication": "Medication",
+    "hydration": "Hydration",
+    "appointment": "Appointment",
+    "activity": "Activity"
+  },
+  "disclaimer": {
+    "prototype": "Prototype",
+    "not_medical": "Prototype behavioral insight — not a medical diagnosis.",
+    "consult_professional": "Always consult a medical professional for health advice."
+  }
+}

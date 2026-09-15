@@ -1,0 +1,16 @@
+{
+    "timestamp": "2026-08-21T23:02:55.595098",
+    "features": [
+        "accuracy",
+        "mean_response_time_ms",
+        "response_time_variance",
+        "repeat_error_rate",
+        "correction_rate",
+        "completion_time_ms",
+        "current_difficulty",
+        "previous_session_accuracy",
+        "recent_trend"
+    ],
+    "accuracy": 0.901,
+    "description": "Prototype model evaluation on synthetic gameplay data"
+}

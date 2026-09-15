@@ -1,0 +1,7 @@
+{
+  "n_estimators": 35,
+  "median_latency_ms": 0.004099999999993997,
+  "p95_latency_ms": 0.006000000000000227,
+  "p99_latency_ms": 0.012199999999992883,
+  "test_scaled_delta": 0
+}

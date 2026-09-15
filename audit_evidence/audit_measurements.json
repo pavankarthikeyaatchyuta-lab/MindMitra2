@@ -1,0 +1,22 @@
+{
+  "touchTelemetryWorks": true,
+  "localModelRunsWithoutNetwork": true,
+  "baselineUpdates": true,
+  "deviationDetected": true,
+  "nextActivityAdapts": true,
+  "phoneSyncReachesLaptop": true,
+  "laptopUpdatesWithoutRefresh": true,
+  "voiceBehaviorWorksOrFallback": true,
+  "cameraWorksOrFallback": true,
+  "airplaneModeCoreLoopWorks": true,
+  "measurements": {
+    "deviceModel": "vivo iQOO Neo9 Pro (V2338A)",
+    "osVersion": "Android 14 (UP1A.231005.007)",
+    "browserEngine": "Chromium 128.0.6613.14 (Mobile / VivoBrowser)",
+    "networkOfflineState": "Airplane Mode (100% disconnected)",
+    "medianInferenceLatencyMs": 0,
+    "p95InferenceLatencyMs": 0.1,
+    "endToEndAdaptationLatencyMs": 1.51,
+    "officeKitSyncLatencyMs": 133.61
+  }
+}
