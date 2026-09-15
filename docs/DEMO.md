@@ -1,78 +1,65 @@
-# MindMitra Demo Guide
+# MindMitra iQOO Demo Guide
 
-## Quick Demo (for Judges)
+## Quick Demo Paths for Hackathon Judges
 
-### Setup (One-time)
+### Path 1: Instant Judge Scenario Demo (Recommended for Fast Evaluation)
+- **URL**: `http://localhost:3000/judge-demo`
+- **What it does**: Allows judges to trigger real, deterministic gameplay scenarios through the actual on-device Random Forest model and personal baseline engine:
+  - **Scenario A (Normal Cadence)**: Latency 950ms, 0 errors $\rightarrow$ Model predicts `INCREASE`/`MAINTAIN`, Baseline: `NORMAL`.
+  - **Scenario B (Fatigued / Hesitation Cadence)**: Latency 3800ms, 4 repeat errors $\rightarrow$ Model predicts `DECREASE`, Baseline: `MEANINGFUL_DEVIATION`.
+- **Telemetry Breakdown**: Displays the exact 9-feature normalized vector and tree traversal time in real time.
+
+---
+
+### Path 2: Real Dual-Device Cross-Sync Demo (Phone $\leftrightarrow$ Laptop)
+
+1. **Start the servers** (bound to `0.0.0.0`):
+   ```bash
+   # Terminal 1: Backend
+   cd backend
+   python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+   # Terminal 2: Frontend
+   cd frontend
+   npm run dev -- --host 0.0.0.0 --port 3000
+   ```
+
+2. **Open on Laptop**:
+   - Navigate to: `http://localhost:3000/office-kit`
+   - This opens the caregiver's live Office Kit monitoring dashboard.
+
+3. **Open on Phone (iQOO / Android on same Wi-Fi)**:
+   - Check local LAN IP (e.g. `10.80.99.78`)
+   - Navigate to: `http://<YOUR_LAN_IP>:3000/personal-pattern`
+   - Play the touch activity or tap the simulation button.
+
+4. **Observe Zero-Refresh Update**:
+   - Within **~133 ms**, the laptop dashboard updates with the elderly person's deviation status, recommended pacing adjustments, and reason codes without refreshing the page!
+
+---
+
+### Path 3: Airplane Mode Core Loop Verification (100% Offline)
+
+1. Open `http://localhost:3000/personal-pattern` in mobile browser mode or physical phone.
+2. Enable **Airplane Mode** (or DevTools Network Offline).
+3. Tap through the sequence cards.
+4. Verify that:
+   - Telemetry captures cadence and repeat error taps.
+   - On-device ML executes locally in `< 0.001 ms` with **zero network requests**.
+   - Personal baseline calculates deviation status against local profile history.
+   - Next activity adapts immediately.
+
+---
+
+### Path 4: Automated Verification Test Suite
+
+Run the full end-to-end verification script to reproduce all empirical benchmarks:
 ```bash
-# Terminal 1: Backend
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+# 1. Run Mobile E2E Puppeteer Audit (10-Point Checklist)
+node frontend/scripts/test_iqoo_e2e_audit.mjs
 
-# Terminal 2: Frontend
-cd frontend
-npm install
-npm run dev
+# 2. Run Backend Mathematical Parity & Profile Isolation Tests
+python -m pytest backend/test_iqoo_validation_suite.py -v
 ```
+All empirical evidence, latencies, and verification artifacts are saved to `audit_evidence/` and documented in `docs/IQOO_VALIDATION_REPORT.md`.
 
-### Demo Walkthrough
-
-#### 1. Open the App
-- Navigate to http://localhost:3000
-- You'll see the MindMitra welcome screen
-
-#### 2. Seed Demo Data
-- Navigate to http://localhost:3000/demo
-- Click "Seed Demo Data"
-- This creates demo users with 15 historical sessions each
-
-#### 3. Start a Session
-- Return to home (/)
-- Select "Rajesh Kumar" (stable user) or create a new user
-- Click "Start Session"
-
-#### 4. Play Cognitive Games
-- **Memory Match**: Flip cards to find matching pairs
-- **Daily Routine**: Arrange daily activities in correct order
-- **Object Recognition**: Identify objects from multiple choices
-- Each game captures telemetry and adapts difficulty
-
-#### 5. View Caregiver Dashboard
-- After completing games, navigate to Caregiver Dashboard
-- See: Performance overview, Cognitive domain analytics, Trends
-
-#### 6. View Trends
-- Click "Trends" tab
-- See accuracy over time with personal baseline
-- See difficulty trajectory
-
-#### 7. View Insights
-- Click "Insights" tab
-- See explainable insight cards with:
-  - Evidence-based observations
-  - Gemini-generated explanations
-  - Prototype disclaimer
-
-#### 8. Demonstrate Offline Mode
-- In the demo page, click "Simulate Offline"
-- Play a game — data saves locally
-- Click "Simulate Sync" — data synchronizes
-
-#### 9. View Methodology
-- Navigate to /methodology
-- See AI/ML vs Engineered breakdown
-
-### Demo Users
-| User | Pattern | Purpose |
-|------|---------|---------|
-| Rajesh Kumar | Stable performance | Normal baseline demo |
-| Sunita Devi | Recent change in performance | Trend detection demo |
-| Demo User | No history | New user experience |
-
-### Key Demo Points
-1. **Adaptive Difficulty**: Watch difficulty change after games
-2. **Personal Baseline**: Compare current vs historical performance
-3. **Trend Detection**: Sunita shows "recent change" pattern
-4. **Explainability**: Every insight shows evidence + interpretation
-5. **Offline-First**: Games work without internet
-6. **No Medical Claims**: Every insight includes prototype disclaimer

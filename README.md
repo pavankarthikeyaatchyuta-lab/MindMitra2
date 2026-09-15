@@ -1,32 +1,37 @@
-# MindMitra (माइंडमित्र / మైండ్‌మిత్ర) 🧠✨
-### AI-Powered Cognitive Gaming, Adaptive Behavioral Tracking, Community Engagement & Real-Time Memory Assistance Platform for Elderly Users
+# MindMitra 2.0 (माइंडमित्र / మైండ్‌మిత్ర) 🧠📱
+### Phone-First Adaptive Cognitive Companion & Real-Time Caregiver Office Kit
 
 <p align="center">
-  <a href="https://mind-mitra-sigma.vercel.app/">
-    <img src="https://img.shields.io/badge/🚀%20LIVE%20DEMO-mind--mitra--sigma.vercel.app-blueviolet?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo on Vercel" />
+  <a href="https://github.com/pavankarthikeyaatchyuta-lab/MindMitra2">
+    <img src="https://img.shields.io/badge/GitHub-MindMitra2-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Repo" />
   </a>
-  <a href="https://github.com/pavankarthikeyaatchyuta-lab/MindMitra">
-    <img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Repo" />
-  </a>
-  <img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge" alt="Production Status" />
+  <img src="https://img.shields.io/badge/iQOO%20Hackathon%202026-Phone--First%20Validated-blueviolet?style=for-the-badge" alt="iQOO Hackathon" />
+  <img src="https://img.shields.io/badge/On--Device%20ML-%3C0.001ms%20Latency-success?style=for-the-badge" alt="On-Device ML" />
+  <img src="https://img.shields.io/badge/Cross--Device%20Sync-133ms%20Live-orange?style=for-the-badge" alt="Cross-Device Sync" />
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/On--Device%20Ensemble-35%20Trees-blue.svg" />
+  <img src="https://img.shields.io/badge/Model%20Disagreement-0.00%25-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/Airplane%20Mode-100%25%20Offline-success.svg" />
+  <img src="https://img.shields.io/badge/Raw%20Media%20Uploads-0%20Bytes-success.svg" />
   <img src="https://img.shields.io/badge/FastAPI-0.109.0-009688.svg?logo=fastapi&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-18.3.1-61DAFB.svg?logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/React-19.2-61DAFB.svg?logo=react&logoColor=black" />
   <img src="https://img.shields.io/badge/TypeScript-5.5-3178C6.svg?logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/WebRTC-Realtime%20Audio-333333.svg?logo=webrtc&logoColor=white" />
-  <img src="https://img.shields.io/badge/Scikit--Learn-1.4.0-F7931E.svg?logo=scikit-learn&logoColor=white" />
-  <img src="https://img.shields.io/badge/Gemini_2.0_Flash-Explainable_AI-8E75B2.svg?logo=google&logoColor=white" />
-  <img src="https://img.shields.io/badge/PostgreSQL-Neon%20DB-4169E1.svg?logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/TailwindCSS-4.0-38B2AC.svg?logo=tailwind-css&logoColor=white" />
-  <img src="https://img.shields.io/badge/Tests-37%20Passed-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/Tests-43%20Passed-brightgreen.svg" />
 </p>
 
 ---
 
-> 🌐 **Live Web Application**: [https://mind-mitra-sigma.vercel.app/](https://mind-mitra-sigma.vercel.app/)  
-> 💬 **Core Philosophy**: *"We are not monetizing screen time; we are monetizing better elderly care, dignified engagement, and caregiver peace of mind."*
+> 📱 **Phone-First Architecture**: Transforming cognitive wellness from a generic web portal into an adaptive on-device companion that learns an elderly person's individual motor and reaction cadence in real time.
+> 
+> 🛡️ **Zero-Network ML**: Real 35-tree Random Forest ensemble executing directly in phone memory in **`< 0.001 ms`** with **zero network round-trips**.
+> 
+> 💻 **Office Kit Live Sync**: Automatic cross-device broadcast from the elderly phone to the caregiver laptop dashboard in **`133 ms`** without page reload.
+> 
+> 📄 **Validation Report**: See [docs/IQOO_VALIDATION_REPORT.md](docs/IQOO_VALIDATION_REPORT.md) for full empirical benchmarks measured on Android 14 / vivo iQOO Neo9 Pro profile.
+
+---
 
 MindMitra is a **B2C and B2B2C cognitive-wellness and memory companion platform** designed specifically for older adults, family caregivers, and elder-care organizations. Built around the core architecture of **One Caregiver $\rightarrow$ Multiple Elderly Profiles**, MindMitra unifies three vital caregiving dimensions:
 
@@ -275,6 +280,13 @@ Designed to combat social isolation and maintain trusted family bonds.
 | `POST` | `/api/community/events` | Record live activity telemetry & turn actions |
 | `GET` | `/api/community/sessions/caregiver/{id}`| List past community sessions |
 
+### 💻 Office Kit Real-Time Cross-Device Endpoints
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/office-kit/publish` | Broadcasts approved behavioral telemetry summary from elderly phone |
+| `GET` | `/api/office-kit/latest` | Serves newest deviation packet to subscribed caregiver laptop dashboards |
+| `GET` | `/api/office-kit/history` | Fetches historical session packets with timestamps and reason codes |
+
 ### 📞 Connect Mode & WebRTC Real-Time Calling
 | Method | Endpoint | Description |
 |---|---|---|
@@ -291,38 +303,73 @@ Designed to combat social isolation and maintain trusted family bonds.
 
 ---
 
+## 📱 iQOO Phone-First Core Pillars & Empirical Benchmarks
+
+MindMitra 2.0 was specifically validated under an Android 14 / vivo iQOO Neo9 Pro device profile:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        EMPIRICAL AUDIT RESULTS (vivo iQOO Neo9 Pro)                    │
+│                                                                                        │
+│  - Single Model Inference Latency:   < 0.001 ms (Median) • 0.100 ms (P95)              │
+│  - Python Reference Disagreement:    0.00% (0 / 500 test samples)                      │
+│  - End-to-End Client Adaptation:     1.51 ms (Touch ──► ML ──► Personal Baseline)      │
+│  - Office Kit Cross-Device Sync:     133.61 ms (Zero-Reload Live Sync to Laptop)       │
+│  - Airplane Mode Offline Operation:  100% Operational (0 Network Requests)             │
+│  - Raw Audio / Photo Cloud Upload:   0 Bytes (All local canvas / Web Speech)           │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **On-Device Random Forest**: Real 35-tree ensemble converted from Scikit-Learn into JSON and executed directly in client memory with zero cloud network overhead.
+2. **Sensory Behavioral Telemetry**:
+   - **Touch**: Real touch events capture reaction latency, inter-tap cadence, hesitation intervals ($\ge 3$s), and repeat error rates.
+   - **Voice**: Verbal recall measures cadence and pause durations locally; zero raw audio files are stored or uploaded.
+   - **Camera**: Local 2D canvas face recognition for familiar person verification; zero camera frames leave the device.
+3. **Personal Baseline Guardrails**:
+   - Minimum 3 sessions required before deviation flags are active (`CALIBRATING` state).
+   - Strict profile isolation ensures Grandma's metrics never cross-contaminate Grandpa's baseline.
+   - Non-clinical behavioral observation terminology throughout.
+4. **Office Kit Cross-Device Live Sync**: Real-time broadcast from elderly phone (`/personal-pattern`) to caregiver laptop (`/office-kit`) via background transport without refreshing the browser.
+5. **Interactive Judge Demo**: Instant verification of Normal vs. Degraded scenarios at `/judge-demo`.
+
+---
+
 ## 🚀 Quickstart & Local Development
 
-### 1. Live Deployment
-Explore the live production application: **[https://mind-mitra-sigma.vercel.app/](https://mind-mitra-sigma.vercel.app/)**
-
-### 2. Local Setup
+### 1. Local Setup
 ```bash
 # Clone the repository
-git clone https://github.com/pavankarthikeyaatchyuta-lab/MindMitra.git
-cd MindMitra
+git clone https://github.com/pavankarthikeyaatchyuta-lab/MindMitra2.git
+cd MindMitra2
 
 # Backend Setup
 cd backend
 pip install -r requirements.txt
 cp .env.example .env
-# Configure GEMINI_API_KEY / OPENROUTER_API_KEY in backend/.env
-python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+# Configure GEMINI_API_KEY / OPENROUTER_API_KEY in backend/.env (optional)
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 # Frontend Setup (in a separate terminal)
 cd ../frontend
 npm install
-npm run dev -- --host 127.0.0.1 --port 3000
+npm run dev -- --host 0.0.0.0 --port 3000
 ```
-- Web Application: **http://localhost:3000**
-- Interactive Swagger API Docs: **http://127.0.0.1:8000/docs**
+- **Phone Access (on same Wi-Fi)**: `http://<YOUR_LAN_IP>:3000/personal-pattern`
+- **Caregiver Office Kit (Laptop)**: `http://localhost:3000/office-kit`
+- **Judge Demo**: `http://localhost:3000/judge-demo`
+- **Interactive API Docs**: `http://localhost:8000/docs`
 
-### 3. Run Automated Test Suite
+### 2. Run Verification Test Suites
 ```bash
-cd backend
-python -m pytest -v
+# 1. Run Backend Validation Tests (5/5 Passing)
+python -m pytest backend/test_iqoo_validation_suite.py -v
+
+# 2. Run All Backend Tests (43 Passing)
+python -m pytest backend/ -v
+
+# 3. Run E2E Mobile Device Puppeteer Audit (10-Point Checklist)
+node frontend/scripts/test_iqoo_e2e_audit.mjs
 ```
-*(37 unit, integration, and security tests — all passing)*.
 
 ---
 
@@ -340,5 +387,5 @@ MindMitra is an **assistive cognitive engagement, social connectivity, and behav
 
 ## 👥 Authors & Acknowledgments
 - **Project Lead**: Atchyuta Pavan Karthikeya
-- **Repository**: [https://github.com/pavankarthikeyaatchyuta-lab/MindMitra](https://github.com/pavankarthikeyaatchyuta-lab/MindMitra)
-- **Live Deployment**: [https://mind-mitra-sigma.vercel.app/](https://mind-mitra-sigma.vercel.app/)
+- **Repository**: [https://github.com/pavankarthikeyaatchyuta-lab/MindMitra2](https://github.com/pavankarthikeyaatchyuta-lab/MindMitra2)
+- **Validation Report**: [docs/IQOO_VALIDATION_REPORT.md](docs/IQOO_VALIDATION_REPORT.md)
