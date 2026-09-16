@@ -171,7 +171,7 @@ export default function Session() {
   };
 
   return (
-    <div className="min-h-screen p-6 md:p-10 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
+    <div className="min-h-screen p-4 sm:p-6 md:p-10 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <header className="mb-8 text-center">

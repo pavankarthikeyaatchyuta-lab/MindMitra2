@@ -120,7 +120,7 @@ export default function CaregiverAccountMenu() {
       {/* Security & Password Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="card max-w-md w-full p-6 shadow-2xl relative">
+          <div className="card max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
             <button
               onClick={() => setShowSettingsModal(false)}
               className="absolute top-4 right-4 text-slate-700 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1"

@@ -171,7 +171,7 @@ export default function ProfileSelection() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col justify-between p-6 max-w-6xl mx-auto bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
+    <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 max-w-6xl mx-auto bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 p-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold shadow-xl flex items-center gap-2 animate-in fade-in">
@@ -181,7 +181,7 @@ export default function ProfileSelection() {
       )}
 
       {/* Top Header with ThemeToggle and Account Menu */}
-      <header className="flex justify-between items-center py-4 border-b border-slate-200 dark:border-slate-800">
+      <header className="flex flex-wrap justify-between items-center gap-y-2 py-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
             <Brain size={22} />
@@ -490,7 +490,7 @@ export default function ProfileSelection() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Age
@@ -587,7 +587,7 @@ export default function ProfileSelection() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Age

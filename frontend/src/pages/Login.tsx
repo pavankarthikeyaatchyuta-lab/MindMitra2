@@ -123,11 +123,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
-      <div className="absolute top-6 right-6">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md mt-10 sm:mt-0">
         {/* Branding Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-md mb-3 text-white hover:bg-blue-700 transition-all transform hover:scale-105">
@@ -205,7 +205,7 @@ export default function Login() {
                     placeholder="e.g. Sunita Sharma"
                     className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border ${
                       fieldErrors.name ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500'
-                    } text-black dark:text-white placeholder:text-slate-600 dark:placeholder:text-slate-700 dark:text-slate-400 text-sm font-bold focus:outline-none focus:ring-2`}
+                    } text-black dark:text-white placeholder:text-slate-600 dark:placeholder:text-slate-500 dark:text-slate-400 text-sm font-bold focus:outline-none focus:ring-2`}
                   />
                 </div>
                 {fieldErrors.name && (
@@ -234,7 +234,7 @@ export default function Login() {
                   placeholder="caregiver@example.com"
                   className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border ${
                     fieldErrors.email ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500'
-                  } text-black dark:text-white placeholder:text-slate-600 dark:placeholder:text-slate-700 dark:text-slate-400 text-sm font-bold focus:outline-none focus:ring-2`}
+                  } text-black dark:text-white placeholder:text-slate-600 dark:placeholder:text-slate-500 dark:text-slate-400 text-sm font-bold focus:outline-none focus:ring-2`}
                 />
               </div>
               {fieldErrors.email && (
@@ -262,7 +262,7 @@ export default function Login() {
                   placeholder="••••••••"
                   className={`w-full pl-10 pr-11 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border ${
                     fieldErrors.password ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500'
-                  } text-black dark:text-white placeholder:text-slate-600 dark:placeholder:text-slate-700 dark:text-slate-400 text-sm font-bold focus:outline-none focus:ring-2`}
+                  } text-black dark:text-white placeholder:text-slate-600 dark:placeholder:text-slate-500 dark:text-slate-400 text-sm font-bold focus:outline-none focus:ring-2`}
                 />
                 <button
                   type="button"
@@ -295,7 +295,7 @@ export default function Login() {
                       style={{ width: `${strength.score}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
                     Minimum 8 characters with letters and numbers recommended.
                   </p>
                 </div>

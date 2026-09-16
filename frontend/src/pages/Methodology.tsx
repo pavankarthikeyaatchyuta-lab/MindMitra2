@@ -7,7 +7,7 @@ export default function Methodology() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen p-6 md:p-12 pb-24 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
+    <div className="min-h-screen p-4 sm:p-6 md:p-12 pb-24 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
       <div className="max-w-5xl mx-auto">
         <header className="mb-10 text-center">
           <div className="flex justify-between items-center mb-6">

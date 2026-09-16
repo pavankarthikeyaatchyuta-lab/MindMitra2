@@ -336,7 +336,7 @@ export default function ConnectHub() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 sm:p-6 pb-20 transition-colors">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Top Header */}
-        <header className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/caregiver')}
@@ -346,7 +346,7 @@ export default function ConnectHub() {
               <ArrowLeft size={18} />
             </button>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <PhoneCall className="text-blue-600 dark:text-blue-400" size={24} />
                   <span>Connect Mode & Trusted Calling</span>

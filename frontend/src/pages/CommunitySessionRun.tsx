@@ -474,14 +474,14 @@ export default function CommunitySessionRun() {
         {/* ACTIVITY 1: MEMORY CIRCLE (COGNITIVE GROUP) */}
         {/* ---------------------------------------------------- */}
         {sessionData.activity_type === 'memory_circle' && (
-          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <span className="text-[10px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-500/20">
                   Cognitive Group Activity
                 </span>
-                <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
-                  <Brain size={18} className="text-indigo-400" /> Memory Circle: Visual Scene Recall
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                  <Brain size={18} className="text-indigo-600 dark:text-indigo-400" /> Memory Circle: Visual Scene Recall
                 </h3>
               </div>
 
@@ -585,16 +585,16 @@ export default function CommunitySessionRun() {
         {/* ACTIVITY 2: SEQUENCE RELAY (COGNITIVE GROUP) */}
         {/* ---------------------------------------------------- */}
         {sessionData.activity_type === 'sequence_relay' && (
-          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
-            <div className="border-b border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
                   Cognitive Group Activity
                 </span>
-                <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
-                  <ListOrdered size={18} className="text-emerald-400" /> Sequence Relay: {sequenceTasks[currentTaskIndex].title}
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                  <ListOrdered size={18} className="text-emerald-600 dark:text-emerald-400" /> Sequence Relay: {sequenceTasks[currentTaskIndex].title}
                 </h3>
-                <p className="text-xs text-slate-700 dark:text-slate-400 font-medium mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
                   The recipe/routine steps below are shuffled. Use ▲ and ▼ to arrange them in the proper chronological order.
                 </p>
               </div>
@@ -714,19 +714,19 @@ export default function CommunitySessionRun() {
         {/* ACTIVITY 3: GROUP VISUAL PUZZLE (COGNITIVE GROUP) */}
         {/* ---------------------------------------------------- */}
         {sessionData.activity_type === 'group_puzzle' && (
-          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <span className="text-[10px] font-black uppercase text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                <span className="text-[10px] font-black uppercase text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-200 dark:border-cyan-500/20">
                   Cognitive Group Activity
                 </span>
-                <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
-                  <Puzzle size={18} className="text-cyan-400" /> Group Visual Puzzle: Traditional Pattern
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                  <Puzzle size={18} className="text-cyan-600 dark:text-cyan-400" /> Group Visual Puzzle: Traditional Pattern
                 </h3>
               </div>
 
-              <div className="text-xs font-extrabold text-slate-700 dark:text-slate-400">
-                Moves: <span className="text-white">{puzzleMoves}</span>
+              <div className="text-xs font-extrabold text-slate-600 dark:text-slate-400">
+                Moves: <span className="text-slate-900 dark:text-white font-black">{puzzleMoves}</span>
               </div>
             </div>
 
@@ -770,22 +770,22 @@ export default function CommunitySessionRun() {
         {/* ACTIVITY 4: STORY CHAIN (SOCIAL ENGAGEMENT) */}
         {/* ---------------------------------------------------- */}
         {sessionData.activity_type === 'story_chain' && (
-          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
-            <div className="border-b border-slate-800 pb-3">
-              <span className="text-[10px] font-black uppercase text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
+              <span className="text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-500/20">
                 Social Engagement Activity • No Cognitive Scoring
               </span>
-              <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
-                <Sparkles size={18} className="text-purple-400" /> Collaborative Story Chain
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                <Sparkles size={18} className="text-purple-600 dark:text-purple-400" /> Collaborative Story Chain
               </h3>
             </div>
 
             {/* Story History Chain */}
-            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 max-h-60 overflow-y-auto">
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 max-h-60 overflow-y-auto">
               {storyChainLines.map((line, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                  <span className="font-extrabold text-purple-400 block mb-0.5">{line.author}:</span>
-                  <p className="text-slate-200 font-medium leading-relaxed">"{line.text}"</p>
+                <div key={idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                  <span className="font-extrabold text-purple-600 dark:text-purple-400 block mb-0.5">{line.author}:</span>
+                  <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">"{line.text}"</p>
                 </div>
               ))}
             </div>
@@ -801,7 +801,7 @@ export default function CommunitySessionRun() {
                   value={newStoryInput}
                   onChange={(e) => setNewStoryInput(e.target.value)}
                   placeholder="e.g. And then the children ran to the courtyard to watch the fireworks..."
-                  className="flex-1 p-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-medium text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
                 <button
                   onClick={handleAddStorySentence}
@@ -819,14 +819,14 @@ export default function CommunitySessionRun() {
         {/* ACTIVITY 5: CONVERSATION CIRCLE (SOCIAL ENGAGEMENT) */}
         {/* ---------------------------------------------------- */}
         {sessionData.activity_type === 'conversation_circle' && (
-          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-500/20">
                   Social Engagement Activity • No Cognitive Scoring
                 </span>
-                <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
-                  <MessageSquare size={18} className="text-amber-400" /> Conversation Circle
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                  <MessageSquare size={18} className="text-amber-600 dark:text-amber-400" /> Conversation Circle
                 </h3>
               </div>
 

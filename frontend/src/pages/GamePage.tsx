@@ -287,11 +287,11 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 flex flex-col">
       {/* Top Navbar */}
-      <nav className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex justify-between items-center transition-colors">
-        <div className="flex items-center gap-3">
+      <nav className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-y-2 transition-colors">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <Link
             to="/session"
-            className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+            className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
             title="Back to Session Menu"
           >
             <ArrowLeft size={18} />
@@ -344,7 +344,7 @@ export default function GamePage() {
             </div>
           ) : finished ? (
             /* Encouraging Completion Screen */
-            <div className="card p-8 sm:p-12 text-center max-w-lg mx-auto shadow-xl border-emerald-200 dark:border-emerald-800 animate-in fade-in">
+            <div className="card p-5 sm:p-10 text-center max-w-lg mx-auto shadow-xl border-emerald-200 dark:border-emerald-800 animate-in fade-in">
               <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto mb-4">
                 <CheckCircle2 size={36} />
               </div>

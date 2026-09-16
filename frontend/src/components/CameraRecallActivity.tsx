@@ -103,7 +103,7 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
       </p>
 
       {/* Target Person Card */}
-      <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-4 mb-6 text-left">
+      <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 text-left">
         <div className="flex items-center gap-3">
           <img
             src={targetPerson.photo_url}
@@ -119,7 +119,7 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700">
+        <div className="flex items-center gap-1.5 px-3 py-1 self-start sm:self-auto rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700">
           <ShieldCheck size={14} />
           <span>Caregiver Approved</span>
         </div>
@@ -141,7 +141,7 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
             <span className="mb-2">Visual aid preview active (photo card mode)</span>
             <button
               onClick={startCamera}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm min-h-[44px] shadow-sm active:scale-95 transition-all"
             >
               Enable Camera
             </button>
@@ -202,7 +202,7 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
         <button
           onClick={onCancel}
           disabled={recallStatus !== 'idle'}
-          className="w-full sm:w-auto px-3 py-3 rounded-xl border border-transparent text-xs text-slate-500 hover:underline"
+          className="w-full sm:w-auto px-4 py-3 min-h-[44px] rounded-xl border border-transparent text-xs text-slate-500 dark:text-slate-400 hover:underline flex items-center justify-center"
         >
           Back to Touch
         </button>

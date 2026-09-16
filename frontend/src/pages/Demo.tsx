@@ -59,7 +59,7 @@ export default function Demo() {
   };
 
   return (
-    <div className="min-h-screen p-6 md:p-10 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
+    <div className="min-h-screen p-4 sm:p-6 md:p-10 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>

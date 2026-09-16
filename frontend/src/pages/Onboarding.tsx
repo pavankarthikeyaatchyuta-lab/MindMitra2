@@ -77,15 +77,15 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
-      <div className="absolute top-6 right-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-lg mt-12 sm:mt-0">
         <button
           onClick={() => navigate('/')}
-          className="mb-4 inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3.5 py-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+          className="mb-4 inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3.5 py-2.5 min-h-[44px] bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold"
         >
           <ArrowLeft size={16} /> Back to Welcome
         </button>

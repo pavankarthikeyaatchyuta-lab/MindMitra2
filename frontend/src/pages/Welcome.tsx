@@ -41,17 +41,17 @@ export default function Welcome() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
       {/* 1. Global Public Top Navigation */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-purple-100/80 dark:border-slate-800 px-6 py-3.5 transition-colors">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-purple-100/80 dark:border-slate-800 px-3 sm:px-6 py-3.5 transition-colors">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-600 flex items-center justify-center text-white shadow-sm group-hover:opacity-90 transition-opacity">
-              <Brain size={22} />
+          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-600 flex items-center justify-center text-white shadow-sm group-hover:opacity-90 transition-opacity">
+              <Brain size={20} />
             </div>
             <div>
-              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                 MindMitra
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium block">Cognitive Wellbeing & Community Companion</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Cognitive Wellbeing & Community Companion</span>
             </div>
           </Link>
 
@@ -85,7 +85,7 @@ export default function Welcome() {
       </header>
 
       {/* 2. Hero Section: "The phone learns your pattern." */}
-      <section className="pt-12 pb-16 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
+      <section className="pt-12 pb-16 px-4 sm:px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs font-black uppercase tracking-wider mb-6 shadow-xs">
           <Sparkles size={14} className="text-blue-600 dark:text-blue-400" />
           <span>iQOO Hackathon 2026 • On-Device Adaptive Intelligence</span>
@@ -150,7 +150,7 @@ export default function Welcome() {
       </section>
 
       {/* 3. CORE ARCHITECTURE: SENSE -> LEARN -> ADAPT -> EXPLAIN */}
-      <section className="py-14 px-6 max-w-7xl mx-auto w-full border-t border-slate-200/80 dark:border-slate-800/80">
+      <section className="py-14 px-4 sm:px-6 max-w-7xl mx-auto w-full border-t border-slate-200/80 dark:border-slate-800/80">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
             <Activity size={13} />
@@ -248,7 +248,7 @@ export default function Welcome() {
       </section>
 
       {/* 5. 4 Cognitive Games Preview */}
-      <section className="py-14 px-6 max-w-7xl mx-auto w-full">
+      <section className="py-14 px-4 sm:px-6 max-w-7xl mx-auto w-full">
         <div className="text-center mb-10">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">Four Evidence-Informed Cognitive Activities</h2>
           <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1.5">Targeting short-term memory, sequence recall, facial recognition, and pattern attention</p>
@@ -313,7 +313,7 @@ export default function Welcome() {
       </section>
 
       {/* 6. Multilingual & Medical Guardrails */}
-      <section className="py-12 px-6 max-w-7xl mx-auto w-full">
+      <section className="py-12 px-4 sm:px-6 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="card p-6 flex items-start gap-4 bg-blue-50/60 dark:bg-blue-950/20 border-blue-200/70 dark:border-blue-900/50">
             <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-400 shrink-0">
@@ -342,7 +342,7 @@ export default function Welcome() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 py-8 px-6 text-center text-xs text-slate-600 dark:text-slate-300 font-medium backdrop-blur-xs">
+      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 py-8 px-4 sm:px-6 text-center text-xs text-slate-600 dark:text-slate-300 font-medium backdrop-blur-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <p>© {new Date().getFullYear()} MindMitra — AI Companion for Cognitive Wellbeing.</p>
           <div className="flex items-center gap-4 font-bold">

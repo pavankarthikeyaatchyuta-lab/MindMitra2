@@ -20,7 +20,7 @@ export default function ThemeToggle() {
           <button
             key={opt.mode}
             onClick={() => setTheme(opt.mode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+            className={`flex items-center gap-1.5 p-2.5 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black transition-all min-h-[44px] ${
               isSelected
                 ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs border border-slate-200 dark:border-slate-700'
                 : 'text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white border border-transparent'
@@ -28,7 +28,7 @@ export default function ThemeToggle() {
             title={`Set ${opt.label} theme`}
           >
             <Icon size={14} className={opt.colorClass} />
-            <span>{opt.label}</span>
+            <span className="hidden sm:inline">{opt.label}</span>
           </button>
         );
       })}

@@ -106,11 +106,11 @@ export default function History() {
   return (
     <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
       {/* Top Navbar */}
-      <nav className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-300 dark:border-slate-800 px-6 py-3.5 flex justify-between items-center transition-colors">
-        <div className="flex items-center gap-4">
+      <nav className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-300 dark:border-slate-800 px-3 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-y-2 transition-colors">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => navigate('/caregiver')}
-            className="text-slate-900 dark:text-slate-300 hover:text-black dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700"
+            className="text-slate-900 dark:text-slate-300 hover:text-black dark:hover:text-white p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700"
             title="Back to Overview"
           >
             <ArrowLeft size={18} />
@@ -316,7 +316,7 @@ export default function History() {
         {/* Session Detail Modal */}
         {selectedSessionDetail && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-            <div className="bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700/90 max-w-lg w-full p-6 shadow-2xl relative text-slate-900 dark:text-white">
+            <div className="bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700/90 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative text-slate-900 dark:text-white">
               <button
                 onClick={() => setSelectedSessionDetail(null)}
                 className="absolute top-4 right-4 text-slate-700 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

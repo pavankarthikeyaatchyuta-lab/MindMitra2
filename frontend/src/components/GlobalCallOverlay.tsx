@@ -51,7 +51,7 @@ export const GlobalCallOverlay: React.FC = () => {
             initial={{ scale: 0.92, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 20 }}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden"
           >
             {/* Animated ringing pulse circles */}
             <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
@@ -105,7 +105,7 @@ export const GlobalCallOverlay: React.FC = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 30 }}
-          className="fixed bottom-6 right-6 z-[9999] max-w-md w-full sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl"
+          className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-6 sm:bottom-6 z-[9999] max-w-md sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl"
         >
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
