@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { useTranslation } from '../i18n';
 import { useVoice } from '../hooks/useVoice';
-import { GameType } from '../types';
+import { GameType, Language } from '../types';
 import MemoryMatch from '../games/MemoryMatch';
 import DailyRoutine from '../games/DailyRoutine';
 import ObjectRecognition from '../games/ObjectRecognition';
@@ -29,6 +29,29 @@ const NEXT_GAME: Record<string, { id: string; title: string }> = {
   pattern: { id: 'complete', title: 'Session Complete' },
 };
 
+const AUDIO_GUIDE_INSTRUCTIONS: Record<GameType, Record<Language, string>> = {
+  memory_match: {
+    en: 'Find matching pairs of symbols by tapping the cards naturally.',
+    te: 'కార్డులను నొక్కడం ద్వారా సరిపోయే జంటలను కనుగొనండి.',
+    hi: 'कार्डों को छूकर मेल खाने वाले जोड़ों को खोजें।',
+  },
+  daily_routine: {
+    en: 'Arrange the routine cards in order from morning to evening.',
+    te: 'ఉదయం నుండి సాయంత్రం వరకు రోజువారీ కార్యకలాపాలను సరైన క్రమంలో అమర్చండి.',
+    hi: 'दिनचर्या के कार्डों को सुबह से शाम के सही क्रम में लगाएं।',
+  },
+  object_recognition: {
+    en: 'Look closely at the item and tap the matching label below.',
+    te: 'చిత్రాన్ని గమనించి, క్రింద ఉన్న సరైన పేరును ఎంచుకోండి.',
+    hi: 'वस्तु को ध्यान से देखें और नीचे सही नाम चुनें।',
+  },
+  pattern_recall: {
+    en: 'Remember the sequence of symbols and tap them in the same order.',
+    te: 'చిహ్నాల క్రమాన్ని గుర్తుంచుకొని, అదే క్రమంలో నొక్కండి.',
+    hi: 'प्रतीकों के क्रम को याद रखें और उसी क्रम में दोहराएं।',
+  },
+};
+
 export default function GamePage() {
   const { gameType } = useParams<{ gameType: string }>();
   const navigate = useNavigate();
@@ -45,6 +68,22 @@ export default function GamePage() {
 
   const gt = gameType ? GAME_TYPES[gameType] || 'memory_match' : 'memory_match';
   const difficulty = currentDifficulty[gt] || 1;
+
+  const playAudioGuide = useCallback(() => {
+    const guideText = AUDIO_GUIDE_INSTRUCTIONS[gt]?.[language] || AUDIO_GUIDE_INSTRUCTIONS[gt]?.en;
+    if (guideText) {
+      speak(guideText, language);
+    }
+  }, [gt, language, speak]);
+
+  useEffect(() => {
+    if (!loading && !finished && voiceEnabled) {
+      const timer = setTimeout(() => {
+        playAudioGuide();
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, finished, gt]);
 
   useEffect(() => {
     async function initGameSession() {
@@ -192,6 +231,16 @@ export default function GamePage() {
       },
     });
 
+    // Spoken Audio Guide on Completion
+    if (voiceEnabled) {
+      const completeText = language === 'te'
+        ? 'అద్భుతం! మీ కార్యాచరణ పూర్తయింది. ఫోన్ మీ స్థాయిని సర్దుబాటు చేసింది.'
+        : language === 'hi'
+        ? 'शानदार काम! आपकी गतिविधि पूरी हो गई है। फोन ने आपके स्तर को अनुकूलित किया है।'
+        : 'Wonderful work! Your activity is complete. The phone has adapted your difficulty.';
+      speak(completeText, language);
+    }
+
     // 4. Background Sync to Cloud Backend
     if (gameSessionId) {
       try {
@@ -209,7 +258,7 @@ export default function GamePage() {
         console.log('Background cloud telemetry note:', e);
       }
     }
-  }, [gameSessionId, activeUserId, gt, difficulty, gameType, currentUser, setGameDifficulty]);
+  }, [gameSessionId, activeUserId, gt, difficulty, gameType, currentUser, setGameDifficulty, voiceEnabled, language, speak]);
 
   const nextInfo = gameType ? NEXT_GAME[gameType] : null;
 
@@ -253,7 +302,21 @@ export default function GamePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={() => {
+              if (!voiceEnabled) {
+                setVoiceEnabled(true);
+              }
+              playAudioGuide();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold transition-all active:scale-95 shadow-xs"
+            title="Listen to Spoken Audio Guide"
+          >
+            <Volume2 size={16} />
+            <span>Audio Guide</span>
+          </button>
+
           <button
             onClick={() => setVoiceEnabled(!voiceEnabled)}
             className={`p-2 rounded-xl border transition-all ${

@@ -30,10 +30,14 @@ import { predictOnDevice, OnDeviceInferenceResult } from '../services/onDeviceIn
 import { PersonalBaselineEngine, PersonalBaselineMetrics, SessionEvidenceVector } from '../services/personalBaselineEngine';
 import { OfficeKitBridge, OfficeKitPacket } from '../services/officeKitBridge';
 import { User } from '../types';
+import { useVoice } from '../hooks/useVoice';
+import { useTranslation } from '../i18n';
 
 export default function PersonalPatternExperience() {
   const navigate = useNavigate();
   const { currentUser, switchProfile } = useApp();
+  const { language } = useTranslation();
+  const { speak, voiceEnabled, setVoiceEnabled } = useVoice();
 
   const [profiles, setProfiles] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -277,16 +281,40 @@ export default function PersonalPatternExperience() {
     setStep('evaluation');
   };
 
+  const playAudioGuide = () => {
+    let guideText = '';
+    if (step === 'intro') {
+      guideText = language === 'te'
+        ? 'పర్సనల్ ప్యాటర్న్‌కు స్వాగతం. మీ ఫోన్ మీ సహజ టచ్ వేగం మరియు సంకోచాలను నేర్చుకుంటుంది.'
+        : language === 'hi'
+        ? 'पर्सनल पैटर्न में आपका स्वागत है। आपका फोन आपकी स्वाभाविक प्रतिक्रिया गति को सीखता है।'
+        : 'Welcome to Personal Pattern. The phone learns your natural touch speed and hesitation locally.';
+    } else if (step === 'evaluation' || step === 'adapted') {
+      guideText = language === 'te'
+        ? 'ఆన్-డివైస్ మెషిన్ లెర్నింగ్ విశ్లేషణ పూర్తయింది. సౌలభ్యం కోసం స్థాయి సర్దుబాటు చేయబడింది.'
+        : language === 'hi'
+        ? 'ऑन-डिवाइस मूल्यांकन पूरा हुआ। आपके आराम के लिए कठिनाई स्तर अनुकूलित किया गया है।'
+        : 'On-device local inference complete. The activity level has adapted to keep you comfortable.';
+    } else {
+      guideText = language === 'te'
+        ? 'కార్డులను సహజంగా నొక్కండి.'
+        : language === 'hi'
+        ? 'कार्डों को स्वाभाविक रूप से स्पर्श करें।'
+        : 'Interact naturally with the screen.';
+    }
+    speak(guideText, language);
+  };
+
   const isDeviation = baselineMetrics?.status === 'MEANINGFUL_DEVIATION' || (touchVector && touchVector.accuracy < 0.65);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-between p-4 sm:p-6 select-none font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col items-center justify-between p-4 sm:p-6 select-none font-sans transition-colors duration-150">
       {/* Top Header Bar */}
-      <header className="w-full max-w-md flex justify-between items-center py-2 border-b border-slate-800">
+      <header className="w-full max-w-md flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Link
             to="/caregiver"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors shadow-xs"
             title="Caregiver Dashboard"
           >
             <ArrowLeft size={16} />
@@ -296,27 +324,22 @@ export default function PersonalPatternExperience() {
               iQ
             </div>
             <div>
-              <span className="font-extrabold text-sm tracking-tight text-white block leading-tight">MindMitra</span>
-              <span className="text-[10px] text-blue-400 font-bold block">iQOO Phone Companion</span>
+              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white block leading-tight">MindMitra</span>
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold block">iQOO Phone Companion</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            to="/office-kit"
-            className="px-2.5 py-1 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-[11px] font-bold text-white flex items-center gap-1 border border-indigo-400/40"
+          <button
+            onClick={playAudioGuide}
+            className="p-1.5 px-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 shadow-xs"
+            title="Listen to Spoken Guide"
           >
-            <Laptop size={12} />
-            <span>Office Kit</span>
-          </Link>
-          <Link
-            to="/judge-demo"
-            className="px-2.5 py-1 rounded-lg bg-amber-500/90 hover:bg-amber-500 text-[11px] font-black text-slate-950 flex items-center gap-1"
-          >
-            <Sparkles size={12} />
-            <span>Judge Demo</span>
-          </Link>
+            <Volume2 size={14} />
+            <span>Guide</span>
+          </button>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -326,14 +349,14 @@ export default function PersonalPatternExperience() {
           <div className="flex flex-col animate-in fade-in">
             {/* Active Elderly Profile Selector */}
             {profiles.length > 0 && (
-              <div className="mb-4 p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between">
+              <div className="mb-4 p-3 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-xs">
                     {(selectedUser?.display_name || selectedUser?.name || 'U').charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-xs font-black text-white">{selectedUser?.display_name || selectedUser?.name}</h3>
-                    <span className="text-[10px] text-slate-400 font-medium">Personal Baseline Active</span>
+                    <h3 className="text-xs font-black text-slate-900 dark:text-white">{selectedUser?.display_name || selectedUser?.name}</h3>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Personal Baseline Active</span>
                   </div>
                 </div>
 
@@ -343,7 +366,7 @@ export default function PersonalPatternExperience() {
                     const u = profiles.find(p => p.id === Number(e.target.value));
                     if (u) handleProfileSelect(u);
                   }}
-                  className="bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-2 py-1 font-bold focus:outline-none"
+                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-xl px-2 py-1 font-bold focus:outline-none"
                 >
                   {profiles.map(p => (
                     <option key={p.id} value={p.id}>{p.display_name || p.name}</option>
@@ -353,46 +376,46 @@ export default function PersonalPatternExperience() {
             )}
 
             {/* Hero Card: "The phone learns your pattern." */}
-            <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-800 to-slate-800/90 border border-slate-700 shadow-xl text-center mb-5">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-950/80 border border-blue-500/30 text-[10px] text-blue-300 font-bold mb-3">
-                <ShieldCheck size={12} className="text-blue-400" />
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 shadow-md text-center mb-5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-[10px] text-blue-700 dark:text-blue-300 font-bold mb-3">
+                <ShieldCheck size={12} className="text-blue-500 dark:text-blue-400" />
                 <span>Demo profile — representative historical sessions</span>
               </div>
 
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 mx-auto mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-400/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-3">
                 <Brain size={26} />
               </div>
 
-              <h2 className="text-xl font-black tracking-tight text-white mb-1">
+              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white mb-1">
                 Learning your pattern
               </h2>
-              <p className="text-xs text-slate-400 font-medium mb-5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-5">
                 Session {sessionCount} of 10 • On-Device Adaptive Companion
               </p>
 
               {/* Baseline Summary Metrics */}
-              <div className="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 mb-4 text-center">
+              <div className="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 mb-4 text-center">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Accuracy</span>
-                  <span className="text-base font-extrabold text-emerald-400">91%</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Accuracy</span>
+                  <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">91%</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Response</span>
-                  <span className="text-base font-extrabold text-blue-400">1.8s</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Response</span>
+                  <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">1.8s</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Corrections</span>
-                  <span className="text-base font-extrabold text-purple-400">1</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Corrections</span>
+                  <span className="text-base font-extrabold text-purple-600 dark:text-purple-400">1</span>
                 </div>
               </div>
 
               {/* Personal Baseline Progress Bar */}
               <div className="text-left mb-2">
-                <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
+                <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
                   <span>Personal baseline</span>
-                  <span className="text-blue-400 font-extrabold">{Math.min(100, sessionCount * 10)}% calibrated</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-extrabold">{Math.min(100, sessionCount * 10)}% calibrated</span>
                 </div>
-                <div className="w-full h-2.5 rounded-full bg-slate-700/60 overflow-hidden flex">
+                <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-700/60 overflow-hidden flex">
                   <div
                     className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(100, Math.max(25, sessionCount * 10))}%` }}
@@ -420,18 +443,18 @@ export default function PersonalPatternExperience() {
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   onClick={() => handleStartActivity('voice')}
-                  className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-white text-xs font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-all min-h-[48px]"
+                  className="py-3 px-4 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-all min-h-[48px] shadow-xs"
                 >
-                  <Mic size={16} className="text-purple-400" />
+                  <Mic size={16} className="text-purple-500 dark:text-purple-400" />
                   <span>Voice Recall</span>
                 </button>
 
                 <button
                   onClick={() => handleStartActivity('camera')}
-                  className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-white text-xs font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-all min-h-[48px]"
+                  className="py-3 px-4 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-all min-h-[48px] shadow-xs"
                 >
-                  <Camera size={16} className="text-cyan-400" />
-                  <span>Familiar Person</span>
+                  <Camera size={16} className="text-cyan-600 dark:text-cyan-400" />
+                  <span>Camera Recall</span>
                 </button>
               </div>
             </div>
@@ -489,26 +512,26 @@ export default function PersonalPatternExperience() {
         {step === 'evaluation' && (
           <div className="flex flex-col animate-in fade-in">
             {/* 4-Stage Core Adaptive Architecture Status Indicator */}
-            <div className="mb-3 p-3 rounded-2xl bg-slate-950/90 border border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 border-b border-slate-800 pb-1">
-                <span className="text-blue-400">Core Adaptation Loop</span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black border border-amber-500/40">LIVE SESSION</span>
+            <div className="mb-3 p-3 rounded-2xl bg-slate-100 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 border-b border-slate-200 dark:border-slate-800 pb-1">
+                <span className="text-blue-600 dark:text-blue-400">Core Adaptation Loop</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[9px] font-black border border-amber-500/40">LIVE SESSION</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px] font-bold">
-                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
-                  <span className="text-emerald-400 font-black">✓ [SENSE]</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black">✓ [SENSE]</span>
                   <span className="truncate">Touch & Cadence</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
-                  <span className="text-emerald-400 font-black">✓ [LOCAL AI]</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black">✓ [LOCAL AI]</span>
                   <span className="truncate">{inferenceResult?.recommendation || 'Evaluated'}</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
-                  <span className="text-emerald-400 font-black">✓ [BASELINE]</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black">✓ [BASELINE]</span>
                   <span className="truncate">{baselineMetrics?.status?.replace('_', ' ') || 'Compared'}</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200">
-                  <span className="text-indigo-400 font-black">⚡ [ADAPT]</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-black">⚡ [ADAPT]</span>
                   <span className="truncate">Lvl {adaptedDifficulty}</span>
                 </div>
               </div>
@@ -516,99 +539,99 @@ export default function PersonalPatternExperience() {
 
             {/* On-Device ML Badge */}
             <div className="flex justify-between items-center mb-3 px-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold">
-                <Cpu size={14} className="text-emerald-400" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
+                <Cpu size={14} className="text-emerald-600 dark:text-emerald-400" />
                 <span>On-Device ML: {inferenceResult?.inference_latency_ms}ms</span>
               </div>
-              <span className="text-[10px] text-slate-400">100% Edge Processing</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">100% Edge Processing</span>
             </div>
 
             {/* Pattern Feedback Card */}
             {isDeviation ? (
               /* DEVIATION STATE */
-              <div className="p-6 rounded-3xl bg-slate-800 border-2 border-amber-500/70 shadow-2xl text-center mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mx-auto mb-3">
+              <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border-2 border-amber-500/70 shadow-2xl text-center mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto mb-3">
                   <TrendingDown size={28} />
                 </div>
 
-                <h3 className="text-lg font-black text-white mb-1">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">
                   A change from your usual pattern was observed.
                 </h3>
-                <p className="text-xs text-amber-300/90 font-medium mb-5">
+                <p className="text-xs text-amber-700 dark:text-amber-300/90 font-medium mb-5">
                   Recent interaction differs from your established personal baseline.
                 </p>
 
                 {/* The 3 Core Deviation Metrics */}
                 <div className="space-y-2 mb-5 text-left">
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Response time</span>
-                    <span className="text-xs font-extrabold text-amber-400 flex items-center gap-1">
+                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Response time</span>
+                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       <TrendingUp size={14} /> ↑ 48% (Slower)
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Corrections</span>
-                    <span className="text-xs font-extrabold text-amber-400 flex items-center gap-1">
+                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Corrections</span>
+                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       <TrendingUp size={14} /> ↑ 3x (Hesitation)
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Accuracy</span>
-                    <span className="text-xs font-extrabold text-amber-400 flex items-center gap-1">
+                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Accuracy</span>
+                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       <TrendingDown size={14} /> ↓ 19%
                     </span>
                   </div>
                 </div>
 
                 {/* Real-time Adaptation Notice */}
-                <div className="p-3.5 rounded-2xl bg-indigo-950/60 border border-indigo-500/40 text-left mb-2">
-                  <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold mb-1">
-                    <Sparkles size={14} className="text-indigo-400" />
+                <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/40 text-left mb-2">
+                  <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 text-xs font-bold mb-1">
+                    <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
                     <span>Real-Time Adaptation</span>
                   </div>
-                  <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                  <p className="text-xs text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
                     We will adjust the next activity from Level {currentDifficulty} to Level {adaptedDifficulty} to maintain positive, comforting engagement.
                   </p>
                 </div>
               </div>
             ) : (
               /* NORMAL STATE */
-              <div className="p-6 rounded-3xl bg-slate-800 border border-emerald-500/50 shadow-xl text-center mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto mb-3">
+              <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-emerald-500/50 shadow-xl text-center mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto mb-3">
                   <CheckCircle2 size={28} />
                 </div>
 
-                <h3 className="text-lg font-black text-white mb-1">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">
                   Interaction matches your usual pattern.
                 </h3>
-                <p className="text-xs text-emerald-300/90 font-medium mb-5">
+                <p className="text-xs text-emerald-700 dark:text-emerald-300/90 font-medium mb-5">
                   Accuracy, cadence, and response latencies align with your personal baseline.
                 </p>
 
-                <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-slate-900/80 border border-slate-800 mb-4 text-center">
+                <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 mb-4 text-center">
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">Accuracy</span>
-                    <span className="text-sm font-extrabold text-emerald-400">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">Accuracy</span>
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
                       {Math.round((touchVector?.accuracy || 0.9) * 100)}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">Latency</span>
-                    <span className="text-sm font-extrabold text-blue-400">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">Latency</span>
+                    <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
                       {((touchVector?.mean_inter_tap_latency_ms || 1800) / 1000).toFixed(1)}s
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">Next Level</span>
-                    <span className="text-sm font-extrabold text-purple-400">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">Next Level</span>
+                    <span className="text-sm font-extrabold text-purple-600 dark:text-purple-400">
                       Level {adaptedDifficulty}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900/60 text-xs text-slate-300 font-medium text-left">
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-xs text-slate-700 dark:text-slate-300 font-medium text-left border border-slate-200 dark:border-slate-800">
                   ✨ On-Device decision: {inferenceResult?.recommendation} (Confidence: {Math.round((inferenceResult?.confidence || 0.88) * 100)}%).
                 </div>
               </div>
@@ -616,12 +639,12 @@ export default function PersonalPatternExperience() {
 
             {/* Synced to Office Kit Confirmation Pill */}
             {syncedPacket && (
-              <div className="p-3 mb-4 rounded-xl bg-indigo-950/60 border border-indigo-700/60 text-indigo-200 text-xs flex items-center justify-between">
+              <div className="p-3 mb-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-700/60 text-indigo-800 dark:text-indigo-200 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Send size={14} className="text-indigo-400" />
+                  <Send size={14} className="text-indigo-600 dark:text-indigo-400" />
                   <span>Approved summary synced to Office Kit</span>
                 </div>
-                <Link to="/office-kit" className="font-bold underline text-white">
+                <Link to="/office-kit" className="font-bold underline text-indigo-700 dark:text-white">
                   View Laptop
                 </Link>
               </div>
@@ -642,7 +665,7 @@ export default function PersonalPatternExperience() {
 
               <button
                 onClick={() => setStep('intro')}
-                className="w-full py-3 rounded-2xl border border-slate-700 text-slate-400 hover:text-white text-xs font-bold"
+                className="w-full py-3 rounded-2xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-400 hover:text-black dark:hover:text-white text-xs font-bold transition-colors"
               >
                 Back to Pattern Overview
               </button>
@@ -652,8 +675,8 @@ export default function PersonalPatternExperience() {
       </main>
 
       {/* Footer Medical Disclaimer */}
-      <footer className="w-full max-w-md text-center py-2 border-t border-slate-800/80">
-        <p className="text-[10px] text-slate-500 leading-tight">
+      <footer className="w-full max-w-md text-center py-2 border-t border-slate-200 dark:border-slate-800/80">
+        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
           ⚠️ Behavioral observation — not a medical diagnosis. MindMitra is a supportive cognitive companion.
         </p>
       </footer>

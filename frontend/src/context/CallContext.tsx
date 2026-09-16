@@ -11,6 +11,9 @@ function playRingtone() {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     ringAudioCtx = new AudioContextClass();
+    if (ringAudioCtx.state === 'suspended') {
+      ringAudioCtx.resume().catch(() => {});
+    }
     
     const playPulse = () => {
       if (!ringAudioCtx || ringAudioCtx.state === 'closed') return;
@@ -135,9 +138,25 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const ringTimeoutTimerRef = useRef<any>(null);
   const pendingOfferPayloadRef = useRef<any>(null);
+  const iceCandidatesQueueRef = useRef<RTCIceCandidateInit[]>([]);
 
   // Current active user identity (Profile ID or Caregiver ID)
   const activeUserId = currentProfile?.id || currentUser?.id || caregiver?.id || null;
+
+  // Flush queued ICE candidates after remote description is set
+  const flushQueuedIceCandidates = async (pc: RTCPeerConnection) => {
+    if (iceCandidatesQueueRef.current.length > 0) {
+      const queued = [...iceCandidatesQueueRef.current];
+      iceCandidatesQueueRef.current = [];
+      for (const candidate of queued) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.warn('[WebRTC] Buffered ICE candidate attach notice:', e);
+        }
+      }
+    }
+  };
 
   // Cleanup helper
   const teardownCallResources = () => {
@@ -155,7 +174,17 @@ export function CallProvider({ children }: { children: ReactNode }) {
       } catch (e) {}
       peerConnRef.current = null;
     }
+    if (remoteAudioRef.current) {
+      try {
+        remoteAudioRef.current.srcObject = null;
+        if (remoteAudioRef.current.parentNode) {
+          remoteAudioRef.current.parentNode.removeChild(remoteAudioRef.current);
+        }
+      } catch (e) {}
+      remoteAudioRef.current = null;
+    }
     pendingOfferPayloadRef.current = null;
+    iceCandidatesQueueRef.current = [];
   };
 
   // 1. Continuous Heartbeat (every 2.5 seconds)
@@ -255,6 +284,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
           try {
             if (peerConnRef.current.signalingState !== 'stable') {
               await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(payload));
+              await flushQueuedIceCandidates(peerConnRef.current);
             }
           } catch (e: any) {
             console.warn('[WebRTC] Remote answer set notice:', e);
@@ -264,10 +294,14 @@ export function CallProvider({ children }: { children: ReactNode }) {
         setCallError(null);
       }
     } else if (signal_type === 'ice-candidate') {
-      if (peerConnRef.current && payload) {
+      if (peerConnRef.current && peerConnRef.current.remoteDescription && peerConnRef.current.remoteDescription.type && payload) {
         try {
           await peerConnRef.current.addIceCandidate(new RTCIceCandidate(payload));
-        } catch (e) {}
+        } catch (e: any) {
+          console.warn('[WebRTC] Error adding direct ICE candidate:', e);
+        }
+      } else if (payload) {
+        iceCandidatesQueueRef.current.push(payload);
       }
     } else if (signal_type === 'declined') {
       if (callState === 'CALLING' || callState === 'CONNECTING') {
@@ -375,12 +409,14 @@ export function CallProvider({ children }: { children: ReactNode }) {
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           if (!remoteAudioRef.current) {
-            const audio = new Audio();
+            const audio = document.createElement('audio');
             audio.autoplay = true;
+            audio.style.display = 'none';
+            document.body.appendChild(audio);
             remoteAudioRef.current = audio;
           }
           remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch(() => {});
+          remoteAudioRef.current.play().catch((e) => console.warn('Audio play notice:', e));
         }
       };
 
@@ -472,12 +508,14 @@ export function CallProvider({ children }: { children: ReactNode }) {
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           if (!remoteAudioRef.current) {
-            const audio = new Audio();
+            const audio = document.createElement('audio');
             audio.autoplay = true;
+            audio.style.display = 'none';
+            document.body.appendChild(audio);
             remoteAudioRef.current = audio;
           }
           remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch(() => {});
+          remoteAudioRef.current.play().catch((e) => console.warn('Audio play notice:', e));
         }
       };
 
@@ -506,6 +544,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
       // 3. Set Remote Offer Description
       await pc.setRemoteDescription(new RTCSessionDescription(pendingOfferPayloadRef.current));
+      await flushQueuedIceCandidates(pc);
 
       // 4. Create Answer
       const answer = await pc.createAnswer();

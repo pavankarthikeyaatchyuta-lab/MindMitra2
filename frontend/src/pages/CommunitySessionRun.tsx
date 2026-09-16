@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Play, ArrowLeft, ArrowRight, CheckCircle2, Users, Sparkles, MessageSquare, Brain, Clock, ShieldCheck, Volume2, ChevronRight, Eye, EyeOff, ListOrdered, Puzzle, RotateCcw, Award, Check, Shuffle, Mic, MicOff, SkipForward, CheckSquare } from 'lucide-react';
 import { api } from '../services/api';
 import { User } from '../types';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function CommunitySessionRun() {
   const navigate = useNavigate();
@@ -382,38 +383,41 @@ export default function CommunitySessionRun() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-6 transition-all">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex flex-col justify-between p-4 sm:p-6 transition-all">
       {/* Top Facilitator Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/community')}
-            className="p-2.5 rounded-xl bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-white border border-slate-800"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 shadow-xs"
             title="Return to Community Hub"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
                 Community Mode • Pass-and-Play
               </span>
-              <h1 className="text-base font-extrabold text-white">{sessionData.name}</h1>
+              <h1 className="text-base font-extrabold text-slate-900 dark:text-white">{sessionData.name}</h1>
             </div>
-            <p className="text-xs text-slate-700 dark:text-slate-400 font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Shared Tablet/Screen • {participants.length} Seniors in Circle • Turn {activeTurnIndex + 1} of {participants.length}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={handleCompleteSession}
-          disabled={completing}
-          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg disabled:opacity-50"
-        >
-          <CheckCircle2 size={16} />
-          <span>{completing ? 'Saving Group Session...' : 'Finish Group Session'}</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onClick={handleCompleteSession}
+            disabled={completing}
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            <CheckCircle2 size={16} />
+            <span>{completing ? 'Saving Group Session...' : 'Finish Group Session'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Presentation Canvas */}
@@ -887,9 +891,9 @@ export default function CommunitySessionRun() {
       </div>
 
       {/* Bottom Participant Quick Selector & Facilitator Note */}
-      <div className="border-t border-slate-800 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="border-t border-slate-200 dark:border-slate-800 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-400">All Participants:</span>
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">All Participants:</span>
           {participants.map((p, index) => {
             const isTurnDone = !!completedTurns[p.id];
             return (
@@ -899,11 +903,11 @@ export default function CommunitySessionRun() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
                   index === activeTurnIndex
                     ? 'bg-indigo-600 text-white ring-2 ring-indigo-400 shadow-md'
-                    : 'bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-800 border border-slate-800'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-xs'
                 }`}
               >
                 <span>{p.display_name || p.name}</span>
-                {isTurnDone && <Check size={12} className="text-emerald-400" />}
+                {isTurnDone && <Check size={12} className="text-emerald-500 dark:text-emerald-400" />}
               </button>
             );
           })}
@@ -915,7 +919,7 @@ export default function CommunitySessionRun() {
             placeholder={`Observation note for ${currentParticipant.display_name || currentParticipant.name}...`}
             value={participantNotes[currentParticipant.id] || ''}
             onChange={(e) => setParticipantNotes({ ...participantNotes, [currentParticipant.id]: e.target.value })}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 text-xs font-medium text-white border border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-72"
+            className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-72 shadow-xs"
           />
         </div>
       </div>

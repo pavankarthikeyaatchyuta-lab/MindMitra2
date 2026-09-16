@@ -70,6 +70,24 @@ export default function ConnectHub() {
   // --- INTEREST CIRCLE MODAL STATE ---
   const [selectedCircle, setSelectedCircle] = useState<any | null>(null);
 
+  // Auto-initialize profiles on mount
+  useEffect(() => {
+    async function initProfiles() {
+      try {
+        const profs = await api.getProfiles(false);
+        if (profs && profs.length > 0) {
+          setAllProfiles(profs);
+          if (!currentProfile?.id) {
+            switchProfile(profs[0]);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not auto-load profiles for ConnectHub:', e);
+      }
+    }
+    initProfiles();
+  }, []);
+
   useEffect(() => {
     if (!currentProfile?.id) return;
     loadData();

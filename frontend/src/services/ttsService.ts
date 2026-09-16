@@ -56,7 +56,7 @@ export interface TTSState {
   lastLocale: string;
 }
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = '';
 
 class TTSService {
   private voices: SpeechSynthesisVoice[] = [];
@@ -350,55 +350,89 @@ class TTSService {
     // Stop any ongoing audio
     this.stop();
 
-    // 1. If native browser voice exists, use browser SpeechSynthesis
-    if (nativeVoice) {
-      return new Promise((resolve) => {
-        try {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = config.locale;
-          utterance.voice = nativeVoice;
-          utterance.rate = options?.rate ?? 0.85;
-          utterance.pitch = options?.pitch ?? 1.0;
-          utterance.volume = options?.volume ?? 1.0;
+    // 1. If native browser voice exists OR language is English, try browser SpeechSynthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      if (nativeVoice || lang === 'en') {
+        return new Promise((resolve) => {
+          try {
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
 
-          utterance.onstart = () => {
-            this.isSpeaking = true;
-            this.notifyState();
-          };
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = config.locale;
+            if (nativeVoice) {
+              utterance.voice = nativeVoice;
+            }
+            utterance.rate = options?.rate ?? 0.85;
+            utterance.pitch = options?.pitch ?? 1.0;
+            utterance.volume = options?.volume ?? 1.0;
 
-          utterance.onend = () => {
-            this.isSpeaking = false;
-            this.notifyState();
-            resolve({
-              success: true,
-              voiceName: nativeVoice.name,
-              locale: utterance.lang,
-              source: 'browser_native',
-            });
-          };
+            let watchdog: any = null;
+            let keepAlive: any = null;
 
-          utterance.onerror = (evt) => {
+            const cleanup = () => {
+              if (watchdog) clearTimeout(watchdog);
+              if (keepAlive) clearInterval(keepAlive);
+            };
+
+            utterance.onstart = () => {
+              this.isSpeaking = true;
+              this.notifyState();
+
+              // Chromium keep-alive workaround
+              keepAlive = setInterval(() => {
+                if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
+                  window.speechSynthesis.resume();
+                }
+              }, 4000);
+
+              // 16-second safety watchdog
+              watchdog = setTimeout(() => {
+                cleanup();
+                if (this.isSpeaking) {
+                  this.isSpeaking = false;
+                  this.notifyState();
+                }
+              }, 16000);
+            };
+
+            utterance.onend = () => {
+              cleanup();
+              this.isSpeaking = false;
+              this.notifyState();
+              resolve({
+                success: true,
+                voiceName: nativeVoice?.name || 'System Default Voice',
+                locale: utterance.lang,
+                source: 'browser_native',
+              });
+            };
+
+            utterance.onerror = (evt) => {
+              cleanup();
+              this.isSpeaking = false;
+              this.notifyState();
+              resolve({
+                success: false,
+                error: `Browser TTS error: ${evt.error || 'unknown'}`,
+              });
+            };
+
+            window.speechSynthesis.speak(utterance);
+          } catch (err: any) {
             this.isSpeaking = false;
             this.notifyState();
             resolve({
               success: false,
-              error: `Browser TTS error: ${evt.error || 'unknown'}`,
+              error: err?.message || 'Failed to initialize browser utterance',
             });
-          };
-
-          window.speechSynthesis.speak(utterance);
-        } catch (err: any) {
-          this.isSpeaking = false;
-          this.notifyState();
-          resolve({
-            success: false,
-            error: err?.message || 'Failed to initialize browser utterance',
-          });
-        }
-      });
+          }
+        });
+      }
     }
 
-    // 2. If native voice is missing (e.g. Telugu on devices without te-IN voice), use Cloud TTS Fallback
+    // 2. If native voice is missing for Telugu or Hindi, use Cloud TTS Fallback
     if (lang === 'te' || lang === 'hi') {
       this.isPreparingCloudAudio = true;
       this.notifyState();
@@ -411,6 +445,23 @@ class TTSService {
       } catch (err: any) {
         this.isPreparingCloudAudio = false;
         this.notifyState();
+        
+        // Final resilient fallback: attempt browser SpeechSynthesis with language tag if available
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          try {
+            const fallbackUtterance = new SpeechSynthesisUtterance(text);
+            fallbackUtterance.lang = config.locale;
+            fallbackUtterance.rate = 0.85;
+            window.speechSynthesis.speak(fallbackUtterance);
+            return {
+              success: true,
+              voiceName: 'System Fallback Voice',
+              locale: config.locale,
+              source: 'browser_native',
+            };
+          } catch {}
+        }
+
         return {
           success: false,
           locale: config.locale,
@@ -420,10 +471,10 @@ class TTSService {
       }
     }
 
-    // Fallback for English
+    // Fallback if SpeechSynthesis API is completely missing from environment
     return {
       success: false,
-      error: 'English voice unavailable.',
+      error: 'Voice guidance not supported in this browser.',
     };
   }
 }

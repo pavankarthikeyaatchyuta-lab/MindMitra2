@@ -10,6 +10,7 @@ interface CameraRecallActivityProps {
 
 export default function CameraRecallActivity({ familiarPerson, onComplete, onCancel }: CameraRecallActivityProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [recallStatus, setRecallStatus] = useState<'idle' | 'confirmed' | 'assisted'>('idle');
@@ -41,12 +42,16 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
         video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
         audio: false,
       });
+      streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setStreamActive(true);
-        setStartTime(performance.now());
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.warn('Autoplay notice:', e));
+        };
       }
+      setStreamActive(true);
+      setStartTime(performance.now());
     } catch (err: any) {
       console.warn('Camera access unavailable:', err);
       setErrorMsg("Camera access is not available or was denied. You can still complete this visual recall exercise using the photo card.");
@@ -55,9 +60,12 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setStreamActive(false);
   };
@@ -119,21 +127,30 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
 
       {/* Camera Viewport or Fallback */}
       <div className="relative w-64 h-64 mx-auto rounded-3xl overflow-hidden border-4 border-slate-200 dark:border-slate-700 bg-slate-950 mb-6 flex items-center justify-center">
-        {streamActive ? (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="w-full h-full object-cover scale-x-[-1]"
-          />
-        ) : errorMsg ? (
-          <div className="p-4 text-center text-xs text-slate-400">
-            <Camera size={36} className="mx-auto mb-2 text-slate-500" />
-            <span>Visual aid preview active (photo card mode)</span>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`w-full h-full object-cover scale-x-[-1] ${streamActive ? 'block' : 'hidden'}`}
+        />
+
+        {!streamActive && errorMsg && (
+          <div className="p-4 text-center text-xs text-slate-400 flex flex-col items-center justify-center">
+            <Camera size={36} className="mb-2 text-slate-500" />
+            <span className="mb-2">Visual aid preview active (photo card mode)</span>
+            <button
+              onClick={startCamera}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+            >
+              Enable Camera
+            </button>
           </div>
-        ) : (
-          <div className="p-4 text-center text-xs text-slate-400">
-            <Camera size={30} className="mx-auto mb-2 text-blue-500" />
+        )}
+
+        {!streamActive && !errorMsg && (
+          <div className="p-4 text-center text-xs text-slate-400 flex flex-col items-center justify-center">
+            <Camera size={32} className="mb-2 text-blue-400 animate-pulse" />
             <span>Opening camera...</span>
           </div>
         )}
