@@ -79,7 +79,8 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     corrections: 0,
     responseTimes: [] as number[],
     startTime: 0,
-    lastActionTime: 0
+    lastActionTime: 0,
+    completed: false
   });
 
   const itemCount = Math.min(6, difficulty + 2);
@@ -109,7 +110,8 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
       corrections: 0,
       responseTimes: [],
       startTime: Date.now(),
-      lastActionTime: Date.now()
+      lastActionTime: Date.now(),
+      completed: false
     };
   };
 
@@ -122,7 +124,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   const [clickDebounce, setClickDebounce] = useState(false);
 
   const handleSelectPoolItem = (item: RoutineItem) => {
-    if (clickDebounce) return;
+    if (clickDebounce || stats.current.completed) return;
     setClickDebounce(true);
     setTimeout(() => setClickDebounce(false), 400);
 
@@ -151,7 +153,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   };
 
   const handleUndo = () => {
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0 || stats.current.completed) return;
     stats.current.corrections++;
     const lastItem = selectedItems[selectedItems.length - 1];
     setSelectedItems(prev => prev.slice(0, -1));
@@ -159,6 +161,8 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   };
 
   const finishGame = (finalSequence: RoutineItem[]) => {
+    if (stats.current.completed) return;
+    stats.current.completed = true;
     setIsComplete(true);
     const now = Date.now();
     const totalTime = now - stats.current.startTime;

@@ -317,7 +317,11 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
         {/* Options Grid */}
         <div
           className={`w-full max-w-xl grid gap-4 ${
-            currentQ.type === 'person' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'
+            currentQ.type === 'person'
+              ? 'grid-cols-1 sm:grid-cols-2'
+              : currentQ.options.length === 3
+              ? 'grid-cols-3'
+              : 'grid-cols-2 sm:grid-cols-4'
           }`}
         >
           {currentQ.options.map(option => {
@@ -330,6 +334,8 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
               } else if (feedback === 'incorrect') {
                 cardStyle = 'bg-rose-50 dark:bg-rose-950/60 border-2 border-rose-500 text-rose-700 dark:text-rose-300';
               }
+            } else if (feedback === 'incorrect' && option.isCorrect) {
+              cardStyle = 'bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-emerald-500 border-dashed text-emerald-700 dark:text-emerald-300 animate-pulse';
             }
 
             return (

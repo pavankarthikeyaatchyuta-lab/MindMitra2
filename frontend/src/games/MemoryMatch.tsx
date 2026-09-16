@@ -26,10 +26,10 @@ const CELESTIAL_EMOJIS = [
 const getPairCount = (difficulty: number) => {
   switch (difficulty) {
     case 1: return 3; // 6 cards (3x2)
-    case 2: return 5; // 10 cards (5x2)
-    case 3: return 6; // 12 cards
-    case 4: return 8; // 16 cards
-    default: return 5;
+    case 2: return 4; // 8 cards (4x2 on tablet/desktop, 2x4 on mobile)
+    case 3: return 6; // 12 cards (4x3)
+    case 4: return 8; // 16 cards (4x4)
+    default: return 4;
   }
 };
 
@@ -57,7 +57,8 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     responseTimes: [] as number[],
     startTime: 0,
     lastActionTime: 0,
-    seenCards: new Set<string>()
+    seenCards: new Set<string>(),
+    completed: false
   });
 
   const pairCount = getPairCount(difficulty);
@@ -102,7 +103,8 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
       responseTimes: [],
       startTime: Date.now(),
       lastActionTime: Date.now(),
-      seenCards: new Set<string>()
+      seenCards: new Set<string>(),
+      completed: false
     };
   };
 
@@ -158,6 +160,8 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   };
 
   const finishGame = () => {
+    if (stats.current.completed) return;
+    stats.current.completed = true;
     setIsComplete(true);
     const now = Date.now();
     const totalTime = now - stats.current.startTime;
@@ -208,11 +212,13 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
       {/* Card Grid */}
       <div
         className={`grid gap-3.5 w-full justify-center ${
-          pairCount <= 4
-            ? 'grid-cols-3 sm:grid-cols-3'
+          pairCount <= 3
+            ? 'grid-cols-3'
+            : pairCount === 4
+            ? 'grid-cols-2 sm:grid-cols-4'
             : pairCount <= 6
             ? 'grid-cols-3 sm:grid-cols-4'
-            : 'grid-cols-4 sm:grid-cols-4'
+            : 'grid-cols-4'
         }`}
       >
         {cards.map((card, idx) => (

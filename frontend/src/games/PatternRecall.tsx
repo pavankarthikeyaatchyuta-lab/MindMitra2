@@ -31,13 +31,20 @@ interface RoundData {
 
 export default function PatternRecall({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
   const { t } = useTranslation();
+  const patternLength = Math.min(5, difficulty + 1); // Level 1 = 2 symbols, Level 2 = 3, etc.
+  const totalRounds = 3;
+  // Distractors differ by more symbols at low difficulty (easier to spot)
+  const swapCount = difficulty <= 2 ? 2 : 1;
+  // Observation time scales with pattern length (6s for 2 symbols, up to 10s)
+  const observeTime = Math.min(10, 4 + patternLength);
+
   const [stage, setStage] = useState<'memorize' | 'recall'>('memorize');
   const [rounds, setRounds] = useState<RoundData[]>([]);
   const [currentRoundIdx, setCurrentRoundIdx] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [isLocked, setIsLocked] = useState(false);
-  const [countdown, setCountdown] = useState(4);
+  const [countdown, setCountdown] = useState(observeTime);
 
   const stats = useRef({
     correctRounds: 0,
@@ -48,9 +55,6 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     lastActionTime: 0
   });
 
-  const patternLength = Math.min(6, difficulty + 2);
-  const totalRounds = 3;
-
   useEffect(() => {
     initGame();
   }, [difficulty, gameSessionId]);
@@ -59,17 +63,18 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     let timer: any;
     if (stage === 'memorize' && countdown > 0) {
       timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            startRecall();
-            return 0;
-          }
-          return prev - 1;
-        });
+        setCountdown(prev => prev - 1);
       }, 1000);
     }
     return () => clearInterval(timer);
   }, [stage, countdown]);
+
+  // Auto-start recall when countdown reaches 0
+  useEffect(() => {
+    if (stage === 'memorize' && countdown <= 0) {
+      startRecall();
+    }
+  }, [countdown, stage]);
 
   const generateRounds = (): RoundData[] => {
     const generated: RoundData[] = [];
@@ -79,12 +84,21 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
         pattern.push(SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]);
       }
 
+      // Number of distractors: 2 at level 1 (3 total options), 3 at level 2+ (4 total options)
+      const distractorCount = difficulty <= 1 ? 2 : 3;
       const distractors: string[][] = [];
-      while (distractors.length < 3) {
+      let safety = 0;
+      while (distractors.length < distractorCount && safety < 100) {
+        safety++;
         const altered = [...pattern];
-        const swapIdx = Math.floor(Math.random() * patternLength);
-        const newSym = SYMBOLS.filter(s => s !== pattern[swapIdx])[Math.floor(Math.random() * (SYMBOLS.length - 1))];
-        altered[swapIdx] = newSym;
+        const indicesToSwap = new Set<number>();
+        while (indicesToSwap.size < Math.min(swapCount, patternLength)) {
+          indicesToSwap.add(Math.floor(Math.random() * patternLength));
+        }
+        for (const swapIdx of indicesToSwap) {
+          const available = SYMBOLS.filter(s => s !== pattern[swapIdx]);
+          altered[swapIdx] = available[Math.floor(Math.random() * available.length)];
+        }
 
         const isDup = distractors.some(d => d.join('') === altered.join('')) || altered.join('') === pattern.join('');
         if (!isDup) {
@@ -107,7 +121,7 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     setRounds(genRounds);
     setCurrentRoundIdx(0);
     setStage('memorize');
-    setCountdown(4);
+    setCountdown(observeTime);
     setSelectedOptionId(null);
     setFeedback(null);
     setIsLocked(false);
@@ -145,7 +159,7 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     } else {
       stats.current.errors++;
       setFeedback('incorrect');
-      setTimeout(() => advanceRound(), 1600);
+      setTimeout(() => advanceRound(), 2200);
     }
   };
 
@@ -157,7 +171,7 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     if (currentRoundIdx + 1 < rounds.length) {
       setCurrentRoundIdx(prev => prev + 1);
       setStage('memorize');
-      setCountdown(4);
+      setCountdown(observeTime);
       stats.current.lastActionTime = Date.now();
     } else {
       finishGame();
@@ -252,10 +266,12 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
                 let cardStyle = 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 text-slate-900 dark:text-white';
                 if (isSelected) {
                   if (feedback === 'correct') {
-                    cardStyle = 'bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-300';
+                    cardStyle = 'bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-400';
                   } else if (feedback === 'incorrect') {
                     cardStyle = 'bg-rose-50 dark:bg-rose-950/60 border-2 border-rose-500 text-rose-700 dark:text-rose-300';
                   }
+                } else if (feedback === 'incorrect' && opt.isCorrect) {
+                  cardStyle = 'bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-emerald-500 border-dashed text-emerald-700 dark:text-emerald-300 animate-pulse';
                 }
 
                 return (
@@ -270,6 +286,11 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
                         {sym}
                       </span>
                     ))}
+                    {feedback === 'incorrect' && opt.isCorrect && (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 ml-2">
+                        Correct pattern
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -283,7 +304,7 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
               )}
               {feedback === 'incorrect' && (
                 <div className="text-rose-600 dark:text-rose-400 font-bold text-base">
-                  Good observation try!
+                  Good observation try! Correct pattern is shown above.
                 </div>
               )}
             </div>
