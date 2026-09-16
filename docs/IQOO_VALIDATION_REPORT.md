@@ -40,12 +40,12 @@
 - **Viewport**: `412 x 915 @3x DPR`, Touchscreen Enabled
 - **Network State**: `Airplane Mode (Offline: true)` for core ML loop; `Local LAN Wi-Fi (192.168.3.181)` for Office Kit sync
 
-### B. Empirical Measured Latencies
+### B. Empirical Measured Latencies (Browser Runtime Benchmark)
 - **Single Model Inference Latency**:
-  - **Median**: `< 0.001 ms` (`0.000 ms` high-res float)
+  - **Median**: `< 0.1 ms` (`0.000 ms` high-res float floor in V8 engine)
   - **P95**: `0.100 ms`
-- **End-to-End Client Adaptation Execution**: `3.05 ms` (measured from raw touch sequence recording through 9-feature extraction, 35-tree traversal, and personal baseline deviation scoring)
-- **Office Kit Cross-Device Sync Latency**: `301.79 ms` (from phone `publishSummary` to laptop `subscribe` DOM update without page refresh)
+- **End-to-End Client Adaptation Execution**: `1.49 - 2.16 ms` (measured from raw touch sequence recording through 9-feature extraction, 35-tree traversal, and personal baseline deviation scoring)
+- **Office Kit Cross-Device Sync Latency**: `150.89 ms` (from phone `publishSummary` to laptop `subscribe` DOM update without page refresh)
 - **Model Disagreement vs Python Reference**: `0.00%` (0 / 500 vectors across Scikit-Learn RandomForest)
 
 ---

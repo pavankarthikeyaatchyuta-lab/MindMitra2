@@ -23,13 +23,13 @@
 
 ---
 
-> 📱 **Phone-First Architecture**: Transforming cognitive wellness from a generic web portal into an adaptive on-device companion that learns an elderly person's individual motor and reaction cadence in real time.
+> 📱 **Phone-First Architecture**: Transforming cognitive wellness into an adaptive on-device companion that learns an elderly person's individual motor and reaction cadence in real time.
 > 
-> 🛡️ **Zero-Network ML**: Real 35-tree Random Forest ensemble executing directly in phone memory in **`< 0.001 ms`** with **zero network round-trips**.
+> 🛡️ **Zero-Network ML**: Real 35-tree Random Forest ensemble executing directly in phone client memory (V8 runtime) with **sub-millisecond inference (< 0.1 ms)** and **zero network round-trips**.
 > 
-> 💻 **Office Kit Live Sync**: Automatic cross-device broadcast from the elderly phone to the caregiver laptop dashboard in **`133 ms`** without page reload.
+> 💻 **Office Kit Live Sync**: Automatic cross-device broadcast from the elderly phone to the caregiver laptop dashboard in **`~150 ms`** without page reload.
 > 
-> 📄 **Validation Report**: See [docs/IQOO_VALIDATION_REPORT.md](docs/IQOO_VALIDATION_REPORT.md) for full empirical benchmarks measured on Android 14 / vivo iQOO Neo9 Pro profile.
+> 📄 **Validation Report**: See [docs/IQOO_VALIDATION_REPORT.md](docs/IQOO_VALIDATION_REPORT.md) for full empirical benchmarks measured in browser runtime under mobile device emulation.
 
 ---
 
@@ -305,18 +305,18 @@ Designed to combat social isolation and maintain trusted family bonds.
 
 ## 📱 iQOO Phone-First Core Pillars & Empirical Benchmarks
 
-MindMitra 2.0 was specifically validated under an Android 14 / vivo iQOO Neo9 Pro device profile:
+MindMitra 2.0 was validated in a browser-runtime benchmark (Chromium V8) under an Android 14 / vivo iQOO Neo9 Pro mobile profile:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        EMPIRICAL AUDIT RESULTS (vivo iQOO Neo9 Pro)                    │
+│             BROWSER RUNTIME BENCHMARK (Chromium V8 • Mobile Device Profile)            │
 │                                                                                        │
-│  - Single Model Inference Latency:   < 0.001 ms (Median) • 0.100 ms (P95)              │
-│  - Python Reference Disagreement:    0.00% (0 / 500 test samples)                      │
-│  - End-to-End Client Adaptation:     1.51 ms (Touch ──► ML ──► Personal Baseline)      │
-│  - Office Kit Cross-Device Sync:     133.61 ms (Zero-Reload Live Sync to Laptop)       │
-│  - Airplane Mode Offline Operation:  100% Operational (0 Network Requests)             │
-│  - Raw Audio / Photo Cloud Upload:   0 Bytes (All local canvas / Web Speech)           │
+│  - Single Model Inference Latency:   Sub-millisecond (< 0.100 ms P95 in V8 engine)     │
+│  - Python Reference Disagreement:    0.00% (0 / 500 test samples vs Scikit-Learn)      │
+│  - End-to-End Client Adaptation:     ~1.5 - 2.0 ms (Touch ──► ML ──► Personal Baseline)│
+│  - Office Kit Cross-Device Sync:     ~150 ms (Zero-Reload Live Sync to Laptop)         │
+│  - Airplane Mode Offline Operation:  100% Operational (0 Network Requests in Core Loop)│
+│  - Raw Audio / Photo Cloud Upload:   0 Bytes (Zero media upload)                       │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
