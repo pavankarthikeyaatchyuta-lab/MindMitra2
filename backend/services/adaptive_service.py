@@ -67,6 +67,13 @@ def recommend_next_difficulty(
         else:
             rec = "MAINTAIN"
 
+    # Graceful Single-Mistake Protection Guard:
+    # An isolated mistake (accuracy >= 0.60, repeat_error_rate <= 0.15) should NEVER demote the user's difficulty level.
+    if rec == "DECREASE" and acc >= 0.60 and repeat_err <= 0.15:
+        rec = "MAINTAIN"
+        conf = 0.85
+        reason = "Steady progress with good overall accuracy; sustaining current level to reinforce mastery."
+
     # Calculate recommended difficulty level
     if rec == "INCREASE":
         new_diff = min(current_difficulty + 1, 4)
@@ -76,7 +83,7 @@ def recommend_next_difficulty(
         reason = "Difficulty adjusted to maintain confidence, comfort, and positive engagement."
     else:
         new_diff = current_difficulty
-        reason = "Performance is well-balanced; maintaining current difficulty level for stability."
+        reason = reason if rec == "MAINTAIN" and 'reason' in locals() and reason else "Performance is well-balanced; maintaining current difficulty level for stability."
 
     return {
         "recommendation": rec,

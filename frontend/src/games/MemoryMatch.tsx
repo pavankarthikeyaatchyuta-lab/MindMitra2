@@ -169,7 +169,11 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
       ? stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length
       : 2000;
 
-    const accuracy = stats.current.matches / Math.max(1, stats.current.matches + stats.current.errors);
+    // In memory match, discovering card locations naturally requires exploratory flips.
+    // We provide an exploration baseline buffer of (pairCount - 1) so normal discovery is not penalized as cognitive failure.
+    const explorationBuffer = Math.max(1, pairCount - 1);
+    const penalizableErrors = stats.current.repeatErrors + Math.max(0, stats.current.errors - explorationBuffer);
+    const accuracy = stats.current.matches / Math.max(1, stats.current.matches + penalizableErrors);
 
     onComplete({
       accuracy: Math.min(1.0, Math.max(0.1, accuracy)),

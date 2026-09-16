@@ -117,12 +117,21 @@ export function predictOnDevice(
   let recommendation: 'DECREASE' | 'MAINTAIN' | 'INCREASE' = 'MAINTAIN';
   let confidence = pMaintain;
 
-  if (pDecrease >= pMaintain && pDecrease >= pIncrease) {
+  if (pDecrease > pMaintain && pDecrease >= pIncrease) {
     recommendation = 'DECREASE';
     confidence = pDecrease;
-  } else if (pIncrease >= pMaintain && pIncrease >= pDecrease) {
+  } else if (pIncrease >= pMaintain && pIncrease > pDecrease) {
     recommendation = 'INCREASE';
     confidence = pIncrease;
+  }
+
+  // Graceful Single-Mistake Guard:
+  // An isolated mistake or momentary hesitation (accuracy >= 0.60, repeat_error_rate <= 0.15)
+  // should NEVER penalize the user with a level drop. We maintain their level to encourage mastery.
+  const isSingleMistake = (features.accuracy ?? 0.75) >= 0.60 && (features.repeat_error_rate ?? 0) <= 0.15;
+  if (recommendation === 'DECREASE' && isSingleMistake) {
+    recommendation = 'MAINTAIN';
+    confidence = Math.max(pMaintain, 0.78);
   }
 
   // 5. Calculate recommended difficulty level
@@ -132,7 +141,7 @@ export function predictOnDevice(
 
   if (recommendation === 'DECREASE') {
     recommendedDifficulty = Math.max(1, currentDifficulty - 1);
-    if (features.accuracy < 0.6) {
+    if (features.accuracy < 0.5) {
       primaryFactor = 'Task accuracy below baseline';
       reason = 'Reducing complexity to restore comfort and positive engagement.';
     } else if (features.mean_response_time_ms > 4500) {
@@ -149,7 +158,9 @@ export function predictOnDevice(
   } else {
     recommendedDifficulty = currentDifficulty;
     primaryFactor = 'Balanced engagement matching personal baseline';
-    reason = 'Performance remains stable and well-calibrated; sustaining current level.';
+    reason = isSingleMistake
+      ? 'Steady progress with good overall accuracy; sustaining current level to reinforce mastery.'
+      : 'Performance remains stable and well-calibrated; sustaining current level.';
   }
 
   const endTime = performance.now();

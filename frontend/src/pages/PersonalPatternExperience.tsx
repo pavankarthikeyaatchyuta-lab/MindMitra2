@@ -134,16 +134,17 @@ export default function PersonalPatternExperience() {
   };
 
   // Process Completed Camera Recall
+  // Process Completed Camera Recall
   const handleCameraComplete = (success: boolean, latencyMs: number, recallType?: 'self_confirmed' | 'assisted') => {
     const approxTouch: TouchBehavioralVector = {
       first_interaction_latency_ms: latencyMs,
       mean_inter_tap_latency_ms: latencyMs,
       response_time_variance: 0.10,
-      hesitation_count: recallType === 'assisted' ? 2 : 0,
+      hesitation_count: recallType === 'assisted' ? 1 : 0,
       repeat_error_rate: 0.0,
-      correction_rate: recallType === 'assisted' ? 0.3 : 0.0,
+      correction_rate: recallType === 'assisted' ? 0.15 : 0.0,
       completion_time_ms: latencyMs + 1000,
-      accuracy: success ? 1.0 : 0.5,
+      accuracy: success ? 1.0 : (recallType === 'assisted' ? 0.75 : 0.60),
       total_taps: 1,
       current_difficulty: currentDifficulty,
       timestamp: new Date().toISOString(),
@@ -172,7 +173,7 @@ export default function PersonalPatternExperience() {
     const sessionVector: SessionEvidenceVector = {
       accuracy: tVector.accuracy,
       mean_response_time_ms: tVector.mean_inter_tap_latency_ms,
-      corrections: Math.round(tVector.correction_rate * tVector.total_taps) || (tVector.accuracy < 0.6 ? 4 : 1),
+      corrections: Math.round(tVector.correction_rate * tVector.total_taps) || (tVector.accuracy < 0.5 ? 3 : 1),
       repeat_errors: Math.round(tVector.repeat_error_rate * tVector.total_taps) || 0,
       completion_time_ms: tVector.completion_time_ms,
       difficulty: currentDifficulty,
@@ -187,8 +188,11 @@ export default function PersonalPatternExperience() {
 
     // 4. Determine Real-time Adaptation
     let nextDiff = currentDifficulty;
-    if (bMetrics.status === 'MEANINGFUL_DEVIATION' || mlDecision.recommendation === 'DECREASE') {
-      nextDiff = Math.max(1, currentDifficulty - 1);
+    if (mlDecision.recommendation === 'DECREASE' || bMetrics.status === 'MEANINGFUL_DEVIATION') {
+      // Single-mistake protection: Do not drop level if accuracy is respectable (>= 0.60)
+      if (tVector.accuracy < 0.60 || bMetrics.status === 'MEANINGFUL_DEVIATION') {
+        nextDiff = Math.max(1, currentDifficulty - 1);
+      }
     } else if (mlDecision.recommendation === 'INCREASE' && bMetrics.status === 'NORMAL') {
       nextDiff = Math.min(5, currentDifficulty + 1);
     }
