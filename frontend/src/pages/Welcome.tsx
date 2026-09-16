@@ -117,8 +117,15 @@ export default function Welcome() {
             to="/personal-pattern"
             className="w-full sm:w-auto py-3.5 px-7 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all min-h-[48px]"
           >
-            <span>📱 Launch Phone Companion</span>
+            <span>📱 Start Personal Pattern</span>
             <ArrowRight size={16} />
+          </Link>
+
+          <Link
+            to="/office-kit"
+            className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 transition-all min-h-[48px]"
+          >
+            <span>💻 Open Office Kit</span>
           </Link>
 
           <Link
@@ -126,14 +133,7 @@ export default function Welcome() {
             className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all min-h-[48px]"
           >
             <Sparkles size={16} />
-            <span>Judge Demo (Evaluation Hub)</span>
-          </Link>
-
-          <Link
-            to="/office-kit"
-            className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 transition-all min-h-[48px]"
-          >
-            <span>💻 Office Kit (Laptop)</span>
+            <span>Judge Demo</span>
           </Link>
         </div>
 
@@ -149,166 +149,44 @@ export default function Welcome() {
         </div>
       </section>
 
-      {/* 3. NEW: Community Circles & Connect Mode Highlight */}
-      <section className="py-14 px-6 max-w-7xl mx-auto w-full">
+      {/* 3. CORE ARCHITECTURE: SENSE -> LEARN -> ADAPT -> EXPLAIN */}
+      <section className="py-14 px-6 max-w-7xl mx-auto w-full border-t border-slate-200/80 dark:border-slate-800/80">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
-            <Users size={13} />
-            <span>Social Connection & Reminiscence</span>
+            <Activity size={13} />
+            <span>The MindMitra Architecture</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            Community Circles & Real-Time Trusted Calling
+            Sense • Learn • Adapt • Explain
           </h2>
           <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1.5 max-w-2xl mx-auto">
-            Combating social isolation through structured neighborhood peer circles, group cognitive sessions, and instant 1-tap family voice connections.
+            A privacy-first, on-device cognitive companion designed to learn each individual's personal behavioral baseline.
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card 1: Community Interest Circles */}
-          <div className="card p-7 bg-gradient-to-br from-blue-50/70 via-indigo-50/50 to-white dark:from-slate-850 dark:via-slate-900 dark:to-slate-900 border-blue-200/80 dark:border-blue-900/60 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                  <Users size={24} />
-                </div>
-                <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800 text-xs font-bold">
-                  Peer Social Circles
-                </span>
-              </div>
-
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">
-                Neighborhood Interest Circles & Group Sessions
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium mb-5">
-                Caregivers can launch interactive group sessions tailored around cultural memory, shared storytelling, and collaborative recall topics:
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center shrink-0">
-                    <Music size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Morning Bhajans & Stotrams</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Devotional recall & mantras</p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Sprout size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Courtyard Gardening</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Plants & terrace routines</p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0">
-                    <BookOpen size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Folktales & Heritage</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Oral history & reminiscence</p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center shrink-0">
-                    <Radio size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Classical Music & Ragas</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Auditory memory & rhythm</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-semibold flex items-center gap-1.5">
-                <Sparkles size={14} className="text-blue-500" /> Real-Time Group Participation
-              </span>
-              <span className="font-mono font-bold text-blue-600 dark:text-blue-400">/community</span>
-            </div>
-          </div>
-
-          {/* Card 2: Connect Mode & Trusted Voice Calling */}
-          <div className="card p-7 bg-gradient-to-br from-purple-50/70 via-indigo-50/50 to-white dark:from-slate-850 dark:via-slate-900 dark:to-slate-900 border-purple-200/80 dark:border-purple-900/60 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20">
-                  <PhoneCall size={24} />
-                </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live WebRTC Voice
-                </span>
-              </div>
-
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">
-                Connect Mode & Encrypted Family Calling
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium mb-5">
-                A streamlined, elderly-accessible voice calling directory connecting seniors with verified family members, neighbors, and caregivers with zero confusing setup:
-              </p>
-
-              <div className="space-y-3 mb-5">
-                <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 shrink-0 mt-0.5">
-                    <PhoneCall size={16} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">1-Tap Direct Voice Calling</h4>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                      Peer-to-peer encrypted WebRTC audio with audible chime ringtones, clear connection timers, and large touch targets.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-950/60 text-pink-600 shrink-0 mt-0.5">
-                    <Mic size={16} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Private Voice Memory Stories</h4>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                      Seniors and family members can record and preserve cherished oral history, voice memories, and life anecdotes directly in the app.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-semibold flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-emerald-500" /> Caregiver Verified & Isolated
-              </span>
-              <span className="font-mono font-bold text-purple-600 dark:text-purple-400">/connect</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Core Product Loop (Play -> Adapt -> Track -> Support) */}
-      <section className="py-14 px-6 max-w-7xl mx-auto w-full">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">The MindMitra Cognitive Wellness Loop</h2>
-          <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1.5">Continuous non-invasive engagement that learns and supports</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-5">
           {[
             {
-              id: 'play',
+              id: 'sense',
               step: '01',
-              title: 'PLAY',
-              subtitle: 'Elderly-Friendly Tasks',
-              desc: '4 dignified daily cognitive activities that respect the senior pace without stress.',
+              title: 'SENSE',
+              subtitle: 'Touch • Voice • Camera',
+              desc: 'Genuinely measures touch cadence, hesitation intervals, and response latencies. Zero raw audio or photos leave the phone.',
               icon: Brain,
-              tag: 'Dignified Design',
+              tag: 'Real Behavioral Telemetry',
+              accentBg: 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-800/60',
+              iconBg: 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300',
+              stepTag: 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800',
+              subTitleColor: 'text-blue-700 dark:text-blue-400',
+            },
+            {
+              id: 'learn',
+              step: '02',
+              title: 'LEARN',
+              subtitle: 'Personal Baseline Engine',
+              desc: 'Learns what normal looks like for this specific individual across 3+ sessions. Does not compare against universal leaderboards.',
+              icon: TrendingUp,
+              tag: 'Personal Median Baseline',
               accentBg: 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-200/80 dark:border-purple-800/60',
               iconBg: 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300',
               stepTag: 'bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800',
@@ -316,42 +194,29 @@ export default function Welcome() {
             },
             {
               id: 'adapt',
-              step: '02',
-              title: 'ADAPT',
-              subtitle: 'Machine Learning Difficulty',
-              desc: 'Trained RandomForest model dynamically adjusts level (1–5) based on response speed & errors.',
-              icon: Cpu,
-              tag: 'ML RandomForest',
-              accentBg: 'bg-pink-50/80 dark:bg-pink-950/40 border-pink-200/80 dark:border-pink-800/60',
-              iconBg: 'bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300',
-              stepTag: 'bg-pink-100 dark:bg-pink-950/80 text-pink-800 dark:text-pink-300 border-pink-300 dark:border-pink-800',
-              subTitleColor: 'text-pink-700 dark:text-pink-400',
-            },
-            {
-              id: 'track',
               step: '03',
-              title: 'TRACK',
-              subtitle: 'Personal Baseline Deviation',
-              desc: 'Monitors longitudinal performance relative to 5–10 session historical median, not population stats.',
-              icon: TrendingUp,
-              tag: 'Baseline Engine',
-              accentBg: 'bg-cyan-50/80 dark:bg-cyan-950/40 border-cyan-200/80 dark:border-cyan-800/60',
-              iconBg: 'bg-cyan-100 dark:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300',
-              stepTag: 'bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800',
-              subTitleColor: 'text-cyan-700 dark:text-cyan-400',
+              title: 'ADAPT',
+              subtitle: 'On-Device Machine Learning',
+              desc: 'A real 35-tree Random Forest runs locally in phone memory (<0.1ms in V8), dynamically adjusting difficulty (1–5) in real time.',
+              icon: Cpu,
+              tag: '100% Offline Inference',
+              accentBg: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60',
+              iconBg: 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300',
+              stepTag: 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+              subTitleColor: 'text-amber-700 dark:text-amber-400',
             },
             {
-              id: 'support',
+              id: 'explain',
               step: '04',
-              title: 'SUPPORT',
-              subtitle: 'Explainable AI for Caregivers',
-              desc: 'Gemini 2.0 Flash synthesizes plain-language summaries with strict non-diagnostic guardrails.',
+              title: 'EXPLAIN',
+              subtitle: 'Caregiver Office Kit',
+              desc: 'Synchronizes structured session summaries to laptop in ~150ms without page reload, answering why a deviation occurred.',
               icon: HeartHandshake,
-              tag: 'Gemini 2.0 Flash',
-              accentBg: 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-200/80 dark:border-violet-800/60',
-              iconBg: 'bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300',
-              stepTag: 'bg-violet-100 dark:bg-violet-950/80 text-violet-800 dark:text-violet-300 border-violet-300 dark:border-violet-800',
-              subTitleColor: 'text-violet-700 dark:text-violet-400',
+              tag: 'Caregiver Intelligence Layer',
+              accentBg: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-800/60',
+              iconBg: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300',
+              stepTag: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+              subTitleColor: 'text-emerald-700 dark:text-emerald-400',
             },
           ].map((item) => {
             const Icon = item.icon;
@@ -410,11 +275,11 @@ export default function Welcome() {
               accentColor: 'text-indigo-700 dark:text-indigo-400',
             },
             {
-              title: 'Object & Face Recognition',
-              domain: 'Visual & Facial Recognition',
-              desc: 'Identify everyday objects and caregiver-uploaded family member photos.',
-              emoji: '🔍',
-              badge: 'Caregiver Photos',
+              title: 'Camera-Assisted Familiar Recall',
+              domain: 'Visual & Familiar Memory',
+              desc: 'Identify everyday objects and caregiver-uploaded family member photos with self-confirmed recall.',
+              emoji: '📷',
+              badge: 'Self-Confirmed Recall',
               iconBg: 'bg-cyan-100 dark:bg-cyan-950/60 border-cyan-200 dark:border-cyan-900',
               accentColor: 'text-cyan-700 dark:text-cyan-400',
             },

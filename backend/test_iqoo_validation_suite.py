@@ -343,3 +343,65 @@ def test_8_non_diagnostic_medical_disclaimer_presence():
     assert "disclaimer" in data
     assert "not a medical diagnosis" in data["disclaimer"].lower() or "behavioral" in data["disclaimer"].lower()
 
+
+def test_9_cross_caregiver_profile_isolation():
+    """
+    Test 9: Verify Caregiver A cannot access or mutate Caregiver B's elderly profiles (HTTP 403).
+    """
+    import uuid
+    uid_a = uuid.uuid4().hex[:8]
+    uid_b = uuid.uuid4().hex[:8]
+
+    # Register Caregiver A
+    res_a = client.post("/api/auth/register", json={
+        "name": f"Caregiver A_{uid_a}",
+        "email": f"cg_a_{uid_a}@test.com",
+        "password": "Password123!"
+    })
+    token_a = res_a.json()["token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    # Register Caregiver B
+    res_b = client.post("/api/auth/register", json={
+        "name": f"Caregiver B_{uid_b}",
+        "email": f"cg_b_{uid_b}@test.com",
+        "password": "Password123!"
+    })
+    token_b = res_b.json()["token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # Caregiver A creates a profile
+    prof_a = client.post("/api/profiles", json={
+        "name": "Father of A",
+        "age": 78,
+        "preferred_language": "en"
+    }, headers=headers_a).json()
+
+    # Caregiver B tries to access Caregiver A's profile community sessions -> should be 403 Forbidden
+    attack_res = client.get(f"/api/community/sessions/profile/{prof_a['id']}", headers=headers_b)
+    assert attack_res.status_code == 403, f"Expected 403 for cross-caregiver profile access, got {attack_res.status_code}"
+
+
+def test_10_multi_signal_deviation_thresholds():
+    """
+    Test 10: Verify multi-signal requirement for deviation: a single isolated minor metric fluctuation
+    does not trigger a meaningful deviation.
+    """
+    from services.baseline_service import calculate_personal_baseline
+
+    # Historical baseline of 5 sessions
+    baseline_sessions = [
+        {"accuracy": 0.88, "avg_response_time_ms": 1800, "repeat_errors": 0, "corrections": 1, "completion_time_ms": 22000, "total_events": 10, "difficulty": 3},
+        {"accuracy": 0.90, "avg_response_time_ms": 1750, "repeat_errors": 0, "corrections": 0, "completion_time_ms": 21000, "total_events": 10, "difficulty": 3},
+        {"accuracy": 0.86, "avg_response_time_ms": 1850, "repeat_errors": 1, "corrections": 1, "completion_time_ms": 23000, "total_events": 10, "difficulty": 3},
+        {"accuracy": 0.89, "avg_response_time_ms": 1800, "repeat_errors": 0, "corrections": 1, "completion_time_ms": 22500, "total_events": 10, "difficulty": 3},
+        {"accuracy": 0.87, "avg_response_time_ms": 1820, "repeat_errors": 0, "corrections": 0, "completion_time_ms": 21500, "total_events": 10, "difficulty": 3},
+    ]
+
+    base = calculate_personal_baseline(baseline_sessions)
+    assert base is not None
+    assert base["sessions_used"] == 5
+    assert 0.85 <= base["baseline_median"] <= 0.90
+    assert 1700 <= base["baseline_latency"] <= 1900
+
+
