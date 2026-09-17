@@ -20,6 +20,11 @@ import {
 } from 'lucide-react';
 import { OfficeKitBridge, OfficeKitPacket } from '../services/officeKitBridge';
 import { api } from '../services/api';
+import { 
+  LocalTemplateExplanationProvider, 
+  OllamaExplanationProvider, 
+  BehavioralExplanationRequest 
+} from '../services/explanationProvider';
 import ThemeToggle from '../components/ThemeToggle';
 import CaregiverAccountMenu from '../components/CaregiverAccountMenu';
 
@@ -30,7 +35,7 @@ export default function OfficeKitView() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanationText, setExplanationText] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
-  const [explanationTier, setExplanationTier] = useState<string>('Tier 1: Gemini 2.0 Flash');
+  const [explanationTier, setExplanationTier] = useState<string>('Edge Deterministic Template');
 
   useEffect(() => {
     // 1. Initial load from local storage
@@ -96,27 +101,43 @@ export default function OfficeKitView() {
     setExplaining(true);
     setShowExplanation(true);
 
-    try {
-      const domain = 'Personal Behavioral Baseline';
-      const status = latestPacket.status === 'MEANINGFUL_DEVIATION' ? 'recent_change' : 'stable';
-      const evidence = `Accuracy dropped from ${(latestPacket.baselineAccuracy * 100).toFixed(0)}% baseline to ${(latestPacket.sessionAccuracy * 100).toFixed(0)}%. Response time increased from ${(latestPacket.baselineLatencyMs / 1000).toFixed(1)}s to ${(latestPacket.sessionLatencyMs / 1000).toFixed(1)}s. Corrections increased from ${latestPacket.baselineCorrections} to ${latestPacket.sessionCorrections}. Evaluated on iQOO Phone using ${latestPacket.onDeviceML.model}.`;
+    const req: BehavioralExplanationRequest = {
+      profileName: latestPacket.profileName || 'Individual',
+      baseline: {
+        medianAccuracy: latestPacket.baselineAccuracy,
+        medianLatencyMs: latestPacket.baselineLatencyMs,
+        medianCorrections: latestPacket.baselineCorrections,
+        eligibleSessionCount: latestPacket.baseline?.eligibleSessionCount || 6,
+        status: latestPacket.status,
+      },
+      session: {
+        accuracy: latestPacket.sessionAccuracy,
+        latencyMs: latestPacket.sessionLatencyMs,
+        corrections: latestPacket.sessionCorrections,
+        hesitationCount: latestPacket.behavioralSignals?.hesitationCount,
+        activityType: latestPacket.session?.activityType || 'TOUCH MEMORY MATCH',
+      },
+      adaptation: {
+        previousDifficulty: latestPacket.adaptation.previousDifficulty,
+        recommendedDifficulty: latestPacket.adaptation.recommendedDifficulty,
+        decision: latestPacket.adaptation.recommendedDifficulty < latestPacket.adaptation.previousDifficulty ? 'DECREASE' : 'MAINTAIN',
+        reason: latestPacket.adaptation.reason,
+      },
+    };
 
-      const res = await api.explainInsight(domain, status, evidence);
-      if (res && res.explanation) {
-        setExplanationText(res.explanation);
-        setExplanationTier(res.provider ? `Tier: ${res.provider}` : 'Tier 1: Gemini 2.0 Flash');
-      } else {
-        throw new Error('Fallback required');
+    // 1. Instant deterministic local template
+    const localRes = LocalTemplateExplanationProvider.generate(req);
+    setExplanationText(localRes.caregiverNote);
+    setExplanationTier('Edge Deterministic Template (<2ms)');
+    setExplaining(false);
+
+    // 2. Non-blocking query to Ollama Gemma 3 4B if available
+    OllamaExplanationProvider.generate(req).then(ollamaRes => {
+      if (ollamaRes && ollamaRes.provider === 'ollama_gemma3_4b') {
+        setExplanationText(ollamaRes.caregiverNote);
+        setExplanationTier('Ollama: Gemma 3 4B (Local Edge LLM)');
       }
-    } catch {
-      // Deterministic explainability fallback
-      setExplanationText(
-        "The recent deviation is primarily associated with slower responses, increased corrections and reduced accuracy across eligible sessions. MindMitra adjusted today's activity difficulty to maintain comfort and positive engagement."
-      );
-      setExplanationTier('Tier 3: Non-Clinical Structured Heuristic');
-    } finally {
-      setExplaining(false);
-    }
+    }).catch(() => {});
   };
 
   const isDeviation = latestPacket?.status === 'MEANINGFUL_DEVIATION';
