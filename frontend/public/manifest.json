@@ -1,0 +1,18 @@
+{
+  "name": "MindMitra — Personal Behavioral Memory",
+  "short_name": "MindMitra",
+  "description": "Your phone learns what normal looks like for you. Offline-first phone-native personal behavioral memory system.",
+  "start_url": "/personal-pattern",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
