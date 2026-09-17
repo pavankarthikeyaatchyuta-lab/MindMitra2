@@ -1,4 +1,5 @@
 import { saveOfflineEvent, getOfflineEvents, clearOfflineEvents, saveToCache, getFromCache, isOnline } from './storage';
+import { PersonalMemoryDB, StoredProfile } from './personalMemoryDB';
 import { User, Session, GameSession, GameEvent, AdaptiveMetrics, AdaptiveResult, AdaptiveDecision, Baseline, TrendData, CognitiveDomain, Insight, Reminder, FamiliarPerson, CommunitySession, TrustedConnection, MemoryStory, ThreeDomainOverview } from '../types';
 
 const API_BASE = '/api';
@@ -77,11 +78,62 @@ export const api = {
   logout: () => fetchJSON<{ status: string }>('/auth/logout', { method: 'POST' }),
 
   // Profiles Lifecycle
-  getProfiles: (includeArchived: boolean = false) => fetchJSON<User[]>(`/profiles?include_archived=${includeArchived}`, {}, 'profiles'),
+  getProfiles: async (includeArchived: boolean = false): Promise<User[]> => {
+    try {
+      if (isOnline()) {
+        const fetched = await fetchJSON<User[]>(`/profiles?include_archived=${includeArchived}`, {}, 'profiles');
+        if (fetched && fetched.length > 0) {
+          fetched.forEach(p => {
+            PersonalMemoryDB.saveProfile({
+              id: p.id,
+              name: p.name || p.display_name || 'Individual',
+              display_name: p.display_name || p.name || 'Individual',
+              age: p.age,
+              relationship: p.relationship,
+              created_at: p.created_at || new Date().toISOString()
+            });
+          });
+          return fetched;
+        }
+      }
+    } catch {}
+    const local = await PersonalMemoryDB.getProfiles();
+    return local as unknown as User[];
+  },
   getArchivedProfiles: () => fetchJSON<User[]>('/profiles/archived', {}, 'profiles_archived'),
-  createProfile: (profile: { name: string; age: number; preferred_language: string; voice_enabled: boolean }) =>
-    fetchJSON<User>('/profiles', { method: 'POST', body: JSON.stringify(profile) }),
-  getProfile: (id: number) => fetchJSON<User>(`/profiles/${id}`, {}, `profile_${id}`),
+  createProfile: async (profile: { name: string; age: number; preferred_language: string; voice_enabled: boolean }) => {
+    const localId = Date.now();
+    const newProfile: User = {
+      id: localId,
+      name: profile.name,
+      display_name: profile.name,
+      age: profile.age,
+      preferred_language: profile.preferred_language,
+      voice_enabled: profile.voice_enabled,
+      caregiver_id: 1,
+      is_archived: false,
+      created_at: new Date().toISOString()
+    };
+    await PersonalMemoryDB.saveProfile({
+      id: newProfile.id,
+      name: newProfile.name || 'Individual',
+      display_name: newProfile.display_name,
+      age: newProfile.age,
+      created_at: newProfile.created_at
+    });
+    if (!isOnline()) return newProfile;
+    try {
+      return await fetchJSON<User>('/profiles', { method: 'POST', body: JSON.stringify(profile) });
+    } catch {
+      return newProfile;
+    }
+  },
+  getProfile: async (id: number): Promise<User> => {
+    const profiles = await PersonalMemoryDB.getProfiles();
+    const found = profiles.find((p: StoredProfile) => p.id === id);
+    if (found) return found as unknown as User;
+    return fetchJSON<User>(`/profiles/${id}`, {}, `profile_${id}`);
+  },
   updateProfile: (id: number, profile: { name?: string; age?: number; preferred_language?: string; voice_enabled?: boolean }) =>
     fetchJSON<User>(`/profiles/${id}`, { method: 'PUT', body: JSON.stringify(profile) }),
   archiveProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}/archive`, { method: 'POST' }),
@@ -93,30 +145,66 @@ export const api = {
     fetchJSON<{ status: string }>('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 
   // Users (Legacy Alias)
-  getUsers: () => fetchJSON<User[]>('/users', {}, 'users'),
+  getUsers: () => api.getProfiles(false),
   createUser: (user: Partial<User>) => fetchJSON<{ id: number }>('/users', { method: 'POST', body: JSON.stringify(user) }),
-  getUser: (id: number) => fetchJSON<User>(`/users/${id}`, {}, `user_${id}`),
+  getUser: (id: number) => api.getProfile(id),
   seedDemoUsers: () => fetchJSON<any>('/users/demo', { method: 'POST' }),
 
   // Sessions
-  startSession: (userId: number) => fetchJSON<{ id: number }>('/sessions/start', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
-  completeSession: (sessionId: number) => fetchJSON<any>(`/sessions/${sessionId}/complete`, { method: 'POST' }),
+  startSession: async (userId: number): Promise<{ id: number }> => {
+    const fallbackId = Date.now();
+    if (!isOnline()) return { id: fallbackId };
+    try {
+      return await fetchJSON<{ id: number }>('/sessions/start', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+    } catch {
+      return { id: fallbackId };
+    }
+  },
+  completeSession: (sessionId: number) => {
+    if (!isOnline()) return Promise.resolve({ status: 'completed_offline' });
+    return fetchJSON<any>(`/sessions/${sessionId}/complete`, { method: 'POST' });
+  },
   getUserSessions: (userId: number) => fetchJSON<Session[]>(`/sessions/user/${userId}`, {}, `sessions_${userId}`),
   getSessionDetails: (sessionId: number) => fetchJSON<any>(`/sessions/${sessionId}`, {}, `session_${sessionId}`),
 
   // Game Sessions
-  startGameSession: (dataOrSessionId: any, userId?: number, gameType?: string, difficulty?: number) => {
-    const payload = typeof dataOrSessionId === 'object'
-      ? dataOrSessionId
-      : { session_id: dataOrSessionId, user_id: userId, game_type: gameType, difficulty: difficulty };
-    return fetchJSON<{ id: number }>('/games/session/start', { method: 'POST', body: JSON.stringify(payload) });
+  startGameSession: async (dataOrSessionId: any, userId?: number, gameType?: string, difficulty?: number): Promise<{ id: number }> => {
+    const fallbackId = Date.now();
+    if (!isOnline()) return { id: fallbackId };
+    try {
+      const payload = typeof dataOrSessionId === 'object'
+        ? dataOrSessionId
+        : { session_id: dataOrSessionId, user_id: userId, game_type: gameType, difficulty: difficulty };
+      return await fetchJSON<{ id: number }>('/games/session/start', { method: 'POST', body: JSON.stringify(payload) });
+    } catch {
+      return { id: fallbackId };
+    }
   },
-  completeGameSession: (id: number, metrics: any) => {
+  completeGameSession: async (id: number, metrics: any) => {
+    // Record to local behavioral memory DB
+    const uid = metrics.user_id || metrics.userId || 1;
+    PersonalMemoryDB.recordSession({
+      userId: uid,
+      domain: metrics.game_type || 'overall',
+      accuracy: metrics.accuracy ?? 0.8,
+      mean_response_time_ms: metrics.avg_response_time_ms ?? 2000,
+      corrections: metrics.corrections ?? 0,
+      repeat_errors: metrics.repeat_errors ?? 0,
+      completion_time_ms: metrics.completion_time_ms ?? 25000,
+      difficulty: metrics.difficulty ?? 2,
+      timestamp: new Date().toISOString()
+    });
+
     if (!isOnline()) {
       saveOfflineEvent({ type: 'complete_game_session', id, data: metrics });
       return Promise.resolve({ status: 'saved_offline' });
     }
-    return fetchJSON<any>(`/games/session/${id}/complete`, { method: 'POST', body: JSON.stringify(metrics) });
+    try {
+      return await fetchJSON<any>(`/games/session/${id}/complete`, { method: 'POST', body: JSON.stringify(metrics) });
+    } catch {
+      saveOfflineEvent({ type: 'complete_game_session', id, data: metrics });
+      return Promise.resolve({ status: 'saved_offline' });
+    }
   },
   getUserGameSessions: (userId: number) => fetchJSON<GameSession[]>(`/games/sessions/user/${userId}`, {}, `game_sessions_${userId}`),
   getUserGameSessionsByType: (userId: number, gameType: string) => fetchJSON<GameSession[]>(`/games/sessions/user/${userId}/${gameType}`, {}, `game_sessions_${userId}_${gameType}`),

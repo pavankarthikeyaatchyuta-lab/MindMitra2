@@ -186,7 +186,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   return (
     <div className="flex flex-col items-center justify-center max-w-3xl mx-auto py-2">
       {/* Header Info */}
-      <div className="w-full card p-5 mb-6">
+      <div className="w-full card p-5 mb-4">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span>📋</span> {t('games.routine.title', 'Daily Routine Recall')}
         </h2>
@@ -195,6 +195,16 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
             ? 'Observe the natural sequence of daily tasks below. Click continue when ready.'
             : 'Rebuild the daily routine in the correct order from start to finish.'}
         </p>
+      </div>
+
+      {/* Behavioral Sensor Telemetry Banner */}
+      <div className="w-full mb-5 px-4 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="font-semibold text-slate-900 dark:text-white">Phone Sensor Active:</span>
+          <span className="text-slate-500 dark:text-slate-400">Observing sequencing cadence & hesitation intervals</span>
+        </div>
+        <span className="hidden sm:inline text-[11px] font-mono text-slate-400">Level {difficulty}</span>
       </div>
 
       {stage === 'memorize' ? (

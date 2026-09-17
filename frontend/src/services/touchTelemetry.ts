@@ -12,6 +12,10 @@ export interface TouchBehavioralVector {
   mean_inter_tap_latency_ms: number;
   response_time_variance: number;
   hesitation_count: number;
+  micro_hesitation_count?: number; // Pauses between 1500ms - 3000ms
+  macro_hesitation_count?: number; // Pauses >= 3000ms
+  mean_hold_duration_ms?: number; // Down-to-up contact duration
+  hold_duration_variance?: number; // Motor interaction rhythm stability
   repeat_error_rate: number;
   correction_rate: number;
   completion_time_ms: number;
@@ -26,7 +30,11 @@ export class TouchSensorTracker {
   private firstTapTime: number = 0;
   private lastTapTime: number = 0;
   private interTapIntervals: number[] = [];
+  private holdDurations: number[] = [];
+  private pendingTouches: Map<string | number, number> = new Map();
   private hesitationCount: number = 0;
+  private microHesitationCount: number = 0;
+  private macroHesitationCount: number = 0;
   private repeatErrorCount: number = 0;
   private correctionCount: number = 0;
   private totalErrors: number = 0;
@@ -47,12 +55,45 @@ export class TouchSensorTracker {
     this.firstTapTime = 0;
     this.lastTapTime = 0;
     this.interTapIntervals = [];
+    this.holdDurations = [];
+    this.pendingTouches.clear();
     this.hesitationCount = 0;
+    this.microHesitationCount = 0;
+    this.macroHesitationCount = 0;
     this.repeatErrorCount = 0;
     this.correctionCount = 0;
     this.totalErrors = 0;
     this.totalSuccesses = 0;
     this.totalTaps = 0;
+  }
+
+  /**
+   * Tracks touch down timestamp to measure hold duration.
+   */
+  public recordTouchDown(touchId: string | number = 'default'): void {
+    this.pendingTouches.set(touchId, performance.now());
+  }
+
+  /**
+   * Tracks touch up and records hold duration.
+   */
+  public recordTouchUp(
+    touchId: string | number = 'default',
+    event: {
+      isSuccess?: boolean;
+      isError?: boolean;
+      isRepeatError?: boolean;
+      isCorrection?: boolean;
+    } = {}
+  ): void {
+    const now = performance.now();
+    const downTime = this.pendingTouches.get(touchId);
+    if (downTime) {
+      const holdDuration = Math.round(now - downTime);
+      this.holdDurations.push(Math.min(10000, Math.max(20, holdDuration)));
+      this.pendingTouches.delete(touchId);
+    }
+    this.recordInteraction(event);
   }
 
   /**
@@ -77,8 +118,12 @@ export class TouchSensorTracker {
       const interval = Math.round(now - this.lastTapTime);
       this.interTapIntervals.push(interval);
       if (interval >= 3000) {
-        // Pauses > 3 seconds signify cognitive hesitation or search delay
+        // Pauses >= 3000ms: Macro hesitation / search delay
         this.hesitationCount++;
+        this.macroHesitationCount++;
+      } else if (interval >= 1500) {
+        // Pauses 1500ms - 2999ms: Micro hesitation / cautious deliberation
+        this.microHesitationCount++;
       }
     }
     this.lastTapTime = now;
@@ -111,8 +156,21 @@ export class TouchSensorTracker {
       const mean = meanInterTapLatencyMs;
       const squaredDiffs = intervals.map(x => Math.pow(x - mean, 2));
       const rawVariance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
-      // Normalized standard deviation
       variance = Math.min(1.0, Math.round((Math.sqrt(rawVariance) / Math.max(mean, 1000)) * 100) / 100);
+    }
+
+    // Hold duration metrics (contact motor consistency)
+    const holds = this.holdDurations;
+    const meanHoldDurationMs = holds.length > 0
+      ? Math.round(holds.reduce((a, b) => a + b, 0) / holds.length)
+      : 180;
+
+    let holdVariance = 0.10;
+    if (holds.length > 1) {
+      const meanHold = meanHoldDurationMs;
+      const squaredHoldDiffs = holds.map(x => Math.pow(x - meanHold, 2));
+      const rawHoldVar = squaredHoldDiffs.reduce((a, b) => a + b, 0) / holds.length;
+      holdVariance = Math.min(1.0, Math.round((Math.sqrt(rawHoldVar) / Math.max(meanHold, 100)) * 100) / 100);
     }
 
     const accuracy = overrideAccuracy !== undefined
@@ -127,6 +185,10 @@ export class TouchSensorTracker {
       mean_inter_tap_latency_ms: meanInterTapLatencyMs,
       response_time_variance: variance,
       hesitation_count: this.hesitationCount,
+      micro_hesitation_count: this.microHesitationCount,
+      macro_hesitation_count: this.macroHesitationCount,
+      mean_hold_duration_ms: meanHoldDurationMs,
+      hold_duration_variance: holdVariance,
       repeat_error_rate: Math.round(repeatErrorRate * 100) / 100,
       correction_rate: Math.round(correctionRate * 100) / 100,
       completion_time_ms: completionTimeMs,

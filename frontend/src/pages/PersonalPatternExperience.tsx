@@ -16,7 +16,10 @@ import {
   Mic, 
   Camera, 
   Send,
-  Laptop
+  Laptop,
+  Calendar,
+  History,
+  ListOrdered
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -28,6 +31,12 @@ import { TouchSensorTracker, TouchBehavioralVector } from '../services/touchTele
 import { VoiceBehavioralVector } from '../services/voiceTelemetry';
 import { predictOnDevice, OnDeviceInferenceResult } from '../services/onDeviceInference';
 import { PersonalBaselineEngine, PersonalBaselineMetrics, SessionEvidenceVector } from '../services/personalBaselineEngine';
+import { 
+  LocalTemplateExplanationProvider, 
+  OllamaExplanationProvider, 
+  BehavioralExplanationResult, 
+  BehavioralExplanationRequest 
+} from '../services/explanationProvider';
 import { OfficeKitBridge, OfficeKitPacket } from '../services/officeKitBridge';
 import { User } from '../types';
 import { useVoice } from '../hooks/useVoice';
@@ -45,6 +54,8 @@ export default function PersonalPatternExperience() {
   const [activityMode, setActivityMode] = useState<'touch' | 'voice' | 'camera'>('touch');
   const [currentDifficulty, setCurrentDifficulty] = useState<number>(3);
   const [adaptedDifficulty, setAdaptedDifficulty] = useState<number>(3);
+  const [explanation, setExplanation] = useState<BehavioralExplanationResult | null>(null);
+  const [showTimeline, setShowTimeline] = useState<boolean>(false);
   
   // Telemetry & Results
   const [touchVector, setTouchVector] = useState<TouchBehavioralVector | null>(null);
@@ -80,6 +91,15 @@ export default function PersonalPatternExperience() {
   const activeUserId = selectedUser ? selectedUser.id : 1;
   const history = PersonalBaselineEngine.getSessionHistory(activeUserId, 'overall');
   const sessionCount = history.length + 1;
+  const baselineMedianAcc = history.length > 0
+    ? PersonalBaselineEngine.calculateMedian(history.map(s => s.accuracy))
+    : 0.88;
+  const baselineMedianLat = history.length > 0
+    ? PersonalBaselineEngine.calculateMedian(history.map(s => s.mean_response_time_ms))
+    : 2000;
+  const baselineMedianCorr = history.length > 0
+    ? PersonalBaselineEngine.calculateMedian(history.map(s => s.corrections))
+    : 1;
 
   // Handle Switch Profile
   const handleProfileSelect = (user: User) => {
@@ -197,6 +217,40 @@ export default function PersonalPatternExperience() {
       nextDiff = Math.min(5, currentDifficulty + 1);
     }
     setAdaptedDifficulty(nextDiff);
+
+    // 4.5 Generate natural-language behavioral explanation (instant template + async Ollama Gemma 3 4B)
+    const explanationReq: BehavioralExplanationRequest = {
+      profileName: selectedUser?.display_name || selectedUser?.name || 'Individual',
+      baseline: {
+        medianAccuracy: bMetrics.baselineMedianAccuracy,
+        medianLatencyMs: bMetrics.baselineMedianLatencyMs,
+        medianCorrections: bMetrics.baselineMedianCorrections,
+        eligibleSessionCount: bMetrics.eligibleSessionCount,
+        status: bMetrics.status,
+      },
+      session: {
+        accuracy: tVector.accuracy,
+        latencyMs: tVector.mean_inter_tap_latency_ms,
+        corrections: sessionVector.corrections,
+        hesitationCount: tVector.hesitation_count,
+        activityType: activityMode.toUpperCase(),
+      },
+      adaptation: {
+        previousDifficulty: currentDifficulty,
+        recommendedDifficulty: nextDiff,
+        decision: nextDiff < currentDifficulty ? 'DECREASE' : nextDiff > currentDifficulty ? 'INCREASE' : 'MAINTAIN',
+        reason: mlDecision.reason,
+      },
+    };
+
+    const instantExp = LocalTemplateExplanationProvider.generate(explanationReq);
+    setExplanation(instantExp);
+
+    OllamaExplanationProvider.generate(explanationReq).then(res => {
+      if (res && res.provider === 'ollama_gemma3_4b') {
+        setExplanation(res);
+      }
+    }).catch(() => {});
 
     // 5. Broadcast to Office Kit Laptop Bridge (Structured v1.0 Packet)
     const officeKitPacket: OfficeKitPacket = OfficeKitBridge.normalizePacket({
@@ -401,15 +455,21 @@ export default function PersonalPatternExperience() {
               <div className="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 mb-4 text-center">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Accuracy</span>
-                  <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">91%</span>
+                  <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {Math.round(baselineMedianAcc * 100)}%
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Response</span>
-                  <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">1.8s</span>
+                  <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">
+                    {(baselineMedianLat / 1000).toFixed(1)}s
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Corrections</span>
-                  <span className="text-base font-extrabold text-purple-600 dark:text-purple-400">1</span>
+                  <span className="text-base font-extrabold text-purple-600 dark:text-purple-400">
+                    {baselineMedianCorr}
+                  </span>
                 </div>
               </div>
 
@@ -426,6 +486,44 @@ export default function PersonalPatternExperience() {
                   />
                 </div>
               </div>
+
+              {/* Longitudinal Behavioral Timeline Collapsible */}
+              <button
+                onClick={() => setShowTimeline(!showTimeline)}
+                className="w-full mt-3 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5">
+                  <History size={14} className="text-blue-500" />
+                  <span>Longitudinal Memory Journey ({history.length} sessions)</span>
+                </div>
+                <span className="text-xs">{showTimeline ? '▲' : '▼'}</span>
+              </button>
+
+              {showTimeline && (
+                <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-left space-y-2.5 text-xs animate-in fade-in">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white block">Calibration Phase (Sessions 1–3)</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Learned initial touch hold time and response latencies.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white block">Baseline Established (Sessions 4–6)</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">MAD statistics stabilized individual medians. Zero cross-profile leakage.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white block">Longitudinal Stability (Sessions 7+)</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Stable touch cadence ({Math.round(baselineMedianLat)}ms) tracked across days.</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Sensor Selection Action Buttons (Touch, Voice, Camera) */}
@@ -551,93 +649,129 @@ export default function PersonalPatternExperience() {
             </div>
 
             {/* Pattern Feedback Card */}
+            {/* Side-by-Side: Personal Baseline vs Today's Session */}
+            <div className="grid grid-cols-2 gap-2.5 mb-3 text-left">
+              {/* Baseline Card */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span>Personal Baseline</span>
+                </div>
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Median Accuracy</span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white">
+                      {Math.round((baselineMetrics?.baselineMedianAccuracy ?? baselineMedianAcc) * 100)}%
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Response Latency</span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white">
+                      {(((baselineMetrics?.baselineMedianLatencyMs ?? baselineMedianLat)) / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Corrections</span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white">
+                      {baselineMetrics?.baselineMedianCorrections ?? baselineMedianCorr}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Today's Session Card */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${isDeviation ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                  <span>Today's Session</span>
+                </div>
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Session Accuracy</span>
+                    <span className={`text-sm font-black ${(touchVector?.accuracy || 0.9) < (baselineMetrics?.baselineMedianAccuracy ?? baselineMedianAcc) - 0.1 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {Math.round((touchVector?.accuracy || 0.9) * 100)}%
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Response Latency</span>
+                    <span className={`text-sm font-black ${(touchVector?.mean_inter_tap_latency_ms || 2000) > (baselineMetrics?.baselineMedianLatencyMs ?? baselineMedianLat) * 1.25 ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                      {(((touchVector?.mean_inter_tap_latency_ms || 2000)) / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Corrections</span>
+                    <span className={`text-sm font-black ${Math.round((touchVector?.correction_rate || 0) * (touchVector?.total_taps || 10)) > (baselineMetrics?.baselineMedianCorrections ?? baselineMedianCorr) + 1 ? 'text-amber-600 dark:text-amber-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                      {Math.round((touchVector?.correction_rate || 0) * (touchVector?.total_taps || 10)) || (touchVector && touchVector.accuracy < 0.65 ? 3 : 1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pattern Status Card */}
             {isDeviation ? (
               /* DEVIATION STATE */
-              <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border-2 border-amber-500/70 shadow-2xl text-center mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto mb-3">
-                  <TrendingDown size={28} />
+              <div className="p-5 rounded-3xl bg-white dark:bg-slate-800 border-2 border-amber-500/70 shadow-2xl text-center mb-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto mb-2">
+                  <TrendingDown size={22} />
                 </div>
 
-                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">
+                <h3 className="text-base font-black text-slate-900 dark:text-white mb-0.5">
                   A change from your usual pattern was observed.
                 </h3>
-                <p className="text-xs text-amber-700 dark:text-amber-300/90 font-medium mb-5">
-                  Recent interaction differs from your established personal baseline.
+                <p className="text-xs text-amber-700 dark:text-amber-300/90 font-medium mb-3">
+                  Interaction pace & accuracy varied from your established baseline.
                 </p>
 
-                {/* The 3 Core Deviation Metrics */}
-                <div className="space-y-2 mb-5 text-left">
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Response time</span>
-                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <TrendingUp size={14} /> ↑ 48% (Slower)
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Corrections</span>
-                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <TrendingUp size={14} /> ↑ 3x (Hesitation)
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Accuracy</span>
-                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <TrendingDown size={14} /> ↓ 19%
-                    </span>
-                  </div>
-                </div>
-
                 {/* Real-time Adaptation Notice */}
-                <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/40 text-left mb-2">
+                <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/40 text-left">
                   <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 text-xs font-bold mb-1">
                     <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
                     <span>Real-Time Adaptation</span>
                   </div>
                   <p className="text-xs text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
-                    We will adjust the next activity from Level {currentDifficulty} to Level {adaptedDifficulty} to maintain positive, comforting engagement.
+                    Adjusted from Level {currentDifficulty} to Level {adaptedDifficulty} to maintain positive, comforting engagement.
                   </p>
                 </div>
               </div>
             ) : (
               /* NORMAL STATE */
-              <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-emerald-500/50 shadow-xl text-center mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto mb-3">
-                  <CheckCircle2 size={28} />
+              <div className="p-5 rounded-3xl bg-white dark:bg-slate-800 border border-emerald-500/50 shadow-xl text-center mb-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto mb-2">
+                  <CheckCircle2 size={22} />
                 </div>
 
-                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">
+                <h3 className="text-base font-black text-slate-900 dark:text-white mb-0.5">
                   Interaction matches your usual pattern.
                 </h3>
-                <p className="text-xs text-emerald-700 dark:text-emerald-300/90 font-medium mb-5">
-                  Accuracy, cadence, and response latencies align with your personal baseline.
+                <p className="text-xs text-emerald-700 dark:text-emerald-300/90 font-medium mb-3">
+                  Pacing, motor cadence, and response latencies align with your personal baseline.
                 </p>
 
-                <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 mb-4 text-center">
-                  <div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">Accuracy</span>
-                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
-                      {Math.round((touchVector?.accuracy || 0.9) * 100)}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">Latency</span>
-                    <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
-                      {((touchVector?.mean_inter_tap_latency_ms || 1800) / 1000).toFixed(1)}s
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">Next Level</span>
-                    <span className="text-sm font-extrabold text-purple-600 dark:text-purple-400">
-                      Level {adaptedDifficulty}
-                    </span>
-                  </div>
-                </div>
-
                 <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-xs text-slate-700 dark:text-slate-300 font-medium text-left border border-slate-200 dark:border-slate-800">
-                  ✨ On-Device decision: {inferenceResult?.recommendation} (Confidence: {Math.round((inferenceResult?.confidence || 0.88) * 100)}%).
+                  ✨ On-Device inference: {inferenceResult?.recommendation} (Confidence: {Math.round((inferenceResult?.confidence || 0.88) * 100)}%).
                 </div>
+              </div>
+            )}
+
+            {/* Behavioral Explanation Note */}
+            {explanation && (
+              <div className="p-3.5 mb-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-left shadow-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <Sparkles size={12} className="text-blue-500" />
+                    <span>Behavioral Pacing Note</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[9px] font-bold border border-blue-200 dark:border-blue-800">
+                    {explanation.provider === 'ollama_gemma3_4b' ? '🦙 Gemma 3 4B (Ollama)' : '⚡ Edge Template'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                  {explanation.summary}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-normal italic">
+                  "{explanation.caregiverNote}"
+                </p>
               </div>
             )}
 

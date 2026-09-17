@@ -19,6 +19,11 @@ import {
 import { predictOnDevice, OnDeviceFeatures, OnDeviceInferenceResult } from '../services/onDeviceInference';
 import { PersonalBaselineEngine, SessionEvidenceVector, PersonalBaselineMetrics } from '../services/personalBaselineEngine';
 import { OfficeKitBridge, OfficeKitPacket } from '../services/officeKitBridge';
+import { 
+  LocalTemplateExplanationProvider, 
+  OllamaExplanationProvider, 
+  BehavioralExplanationResult 
+} from '../services/explanationProvider';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function JudgeDemo() {
@@ -32,6 +37,7 @@ export default function JudgeDemo() {
   const [inferenceResult, setInferenceResult] = useState<OnDeviceInferenceResult | null>(null);
   const [baselineMetrics, setBaselineMetrics] = useState<PersonalBaselineMetrics | null>(null);
   const [officeKitPacket, setOfficeKitPacket] = useState<OfficeKitPacket | null>(null);
+  const [explanation, setExplanation] = useState<BehavioralExplanationResult | null>(null);
 
   // Scenario A: Normal Interaction (Rajesh Kumar)
   const runScenarioA = async () => {
@@ -126,6 +132,31 @@ export default function JudgeDemo() {
     })!;
     OfficeKitBridge.publishSummary(pkt);
     setOfficeKitPacket(pkt);
+
+    // Natural-language behavioral explanation
+    const expA = LocalTemplateExplanationProvider.generate({
+      profileName: 'Rajesh Kumar',
+      baseline: {
+        medianAccuracy: bMet.baselineMedianAccuracy,
+        medianLatencyMs: bMet.baselineMedianLatencyMs,
+        medianCorrections: bMet.baselineMedianCorrections,
+        eligibleSessionCount: bMet.eligibleSessionCount,
+        status: bMet.status,
+      },
+      session: {
+        accuracy: featA.accuracy,
+        latencyMs: featA.mean_response_time_ms,
+        corrections: sessionVec.corrections,
+        activityType: 'TOUCH MEMORY MATCH',
+      },
+      adaptation: {
+        previousDifficulty: 3,
+        recommendedDifficulty: mlRes.recommended_difficulty,
+        decision: mlRes.recommendation,
+        reason: mlRes.reason,
+      },
+    });
+    setExplanation(expA);
 
     setExecuting(false);
     setStepIndex(5); // Complete
@@ -224,6 +255,32 @@ export default function JudgeDemo() {
     OfficeKitBridge.publishSummary(pkt);
     setOfficeKitPacket(pkt);
 
+    // Natural-language behavioral explanation
+    const expB = LocalTemplateExplanationProvider.generate({
+      profileName: 'Sunita Devi',
+      baseline: {
+        medianAccuracy: bMet.baselineMedianAccuracy,
+        medianLatencyMs: bMet.baselineMedianLatencyMs,
+        medianCorrections: bMet.baselineMedianCorrections,
+        eligibleSessionCount: bMet.eligibleSessionCount,
+        status: bMet.status,
+      },
+      session: {
+        accuracy: featB.accuracy,
+        latencyMs: featB.mean_response_time_ms,
+        corrections: sessionVec.corrections,
+        hesitationCount: 5,
+        activityType: 'TOUCH MEMORY MATCH',
+      },
+      adaptation: {
+        previousDifficulty: 4,
+        recommendedDifficulty: 2,
+        decision: 'DECREASE',
+        reason: mlRes.reason,
+      },
+    });
+    setExplanation(expB);
+
     setExecuting(false);
     setStepIndex(5);
   };
@@ -235,6 +292,7 @@ export default function JudgeDemo() {
     setInferenceResult(null);
     setBaselineMetrics(null);
     setOfficeKitPacket(null);
+    setExplanation(null);
   };
 
   return (
@@ -507,6 +565,27 @@ export default function JudgeDemo() {
                 )}
               </div>
             </div>
+
+            {/* Natural-Language Behavioral Explanation Note */}
+            {explanation && (
+              <div className="mt-4 p-4 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-left shadow-xs animate-in fade-in">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <Sparkles size={12} className="text-blue-500" />
+                    <span>Behavioral Adaptation Note</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[9px] font-bold border border-blue-200 dark:border-blue-800">
+                    {explanation.provider === 'ollama_gemma3_4b' ? '🦙 Gemma 3 4B (Ollama)' : '⚡ Edge Template'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-900 dark:text-white font-bold leading-relaxed">
+                  {explanation.summary}
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal italic">
+                  "{explanation.caregiverNote}"
+                </p>
+              </div>
+            )}
 
             {/* Live Office Kit Bridge Notification */}
             {officeKitPacket && (

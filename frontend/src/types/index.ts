@@ -13,6 +13,8 @@ export interface User {
   age: number;
   preferred_language: string;
   voice_enabled: boolean;
+  relationship?: string;
+  is_archived?: boolean;
   created_at: string;
 }
 

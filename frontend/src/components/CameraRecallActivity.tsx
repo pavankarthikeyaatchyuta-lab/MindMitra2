@@ -90,16 +90,22 @@ export default function CameraRecallActivity({ familiarPerson, onComplete, onCan
 
   return (
     <div className="card p-6 sm:p-8 max-w-xl mx-auto text-center animate-in fade-in">
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-200 dark:border-blue-800">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-3 border border-blue-200 dark:border-blue-800">
         <Eye size={14} />
-        <span>Camera-Assisted Familiar Recall</span>
+        <span>Visual Recall Activity</span>
+      </div>
+
+      <div className="mb-4 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 shadow-xs">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="font-semibold text-slate-900 dark:text-white">Observation Sensor:</span>
+        <span className="text-slate-500 dark:text-slate-400">Measuring prompt observation cadence & response latency</span>
       </div>
 
       <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
-        Familiar Person Recall
+        Visual & Prompt Recall
       </h3>
       <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
-        Look at your family member's photo and self-confirm if you recall them.
+        Observe your family member's photo and self-confirm if you recall them.
       </p>
 
       {/* Target Person Card */}
