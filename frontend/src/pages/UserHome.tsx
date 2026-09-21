@@ -232,7 +232,7 @@ export default function UserHome() {
                 All Available Activities
               </h4>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Memory Match, Daily Routine Recall, Visual Recall, Pattern Recall
+                Memory Match, Daily Routine Recall, Visual Recall, Pattern Recall, Voice Recall
               </p>
             </div>
           </div>

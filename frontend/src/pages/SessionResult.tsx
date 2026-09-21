@@ -84,7 +84,8 @@ export default function SessionResult() {
       memory: 'Memory Match',
       routine: 'Daily Routine Recall',
       recognition: 'Visual Recall',
-      pattern: 'Pattern Recall'
+      pattern: 'Pattern Recall',
+      voice: 'Voice Recall',
     };
 
     const finalResult: SessionResultData = {
