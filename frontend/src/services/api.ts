@@ -166,8 +166,31 @@ export const api = {
   },
   archiveProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}/archive`, { method: 'POST' }),
   restoreProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}/restore`, { method: 'POST' }),
-  deleteProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}`, { method: 'DELETE' }),
-  deleteProfilePermanently: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}`, { method: 'DELETE' }),
+  deleteProfile: async (id: number) => {
+    try {
+      await PersonalMemoryDB.deleteProfile(id);
+    } catch (e) {
+      console.warn('Local DB cleanup notice:', e);
+    }
+    const savedUserStr = localStorage.getItem('mindmitra_current_user');
+    if (savedUserStr) {
+      try {
+        const u = JSON.parse(savedUserStr);
+        if (u.id === id) {
+          localStorage.removeItem('mindmitra_current_user');
+        }
+      } catch {}
+    }
+    return fetchJSON<{ status: string; id: number }>(`/profiles/${id}`, { method: 'DELETE' });
+  },
+  deleteProfilePermanently: async (id: number) => {
+    try {
+      await PersonalMemoryDB.deleteProfile(id);
+    } catch (e) {
+      console.warn('Local DB cleanup notice:', e);
+    }
+    return fetchJSON<{ status: string; id: number }>(`/profiles/${id}`, { method: 'DELETE' });
+  },
   exportProfileData: (id: number) => fetchJSON<any>(`/profiles/${id}/export`),
   changePassword: (data: { current_password: string; new_password: string }) =>
     fetchJSON<{ status: string }>('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),

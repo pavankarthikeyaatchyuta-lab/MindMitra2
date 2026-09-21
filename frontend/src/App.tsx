@@ -19,6 +19,7 @@ const UserProfile = lazy(() => import('./pages/UserProfile'));
 
 // Caregiver Workspace Pages
 const CaregiverOverview = lazy(() => import('./caregiver/CaregiverOverview'));
+const CaregiverIndividualSelector = lazy(() => import('./caregiver/CaregiverIndividualSelector'));
 const CaregiverPersonDetail = lazy(() => import('./caregiver/CaregiverPersonDetail'));
 const CaregiverPersonPattern = lazy(() => import('./caregiver/CaregiverPersonPattern'));
 const OfficeKitView = lazy(() => import('./caregiver/OfficeKitView'));
@@ -95,6 +96,7 @@ function AppContent() {
                 CAREGIVER ROUTES
                ============================================================ */}
             <Route path="/caregiver" element={<ProtectedRoute><CaregiverOverview /></ProtectedRoute>} />
+            <Route path="/caregiver/individuals" element={<ProtectedRoute><CaregiverIndividualSelector /></ProtectedRoute>} />
             <Route path="/caregiver/person/:id" element={<ProtectedRoute><CaregiverPersonDetail /></ProtectedRoute>} />
             <Route path="/caregiver/person/:id/pattern" element={<ProtectedRoute><CaregiverPersonPattern /></ProtectedRoute>} />
             <Route path="/caregiver/office-kit" element={<ProtectedRoute><OfficeKitView /></ProtectedRoute>} />
@@ -105,7 +107,7 @@ function AppContent() {
             <Route path="/session" element={<Navigate to="/activities" replace />} />
             <Route path="/session/complete" element={<Navigate to="/my-pattern" replace />} />
             <Route path="/personal-pattern" element={<Navigate to="/my-pattern" replace />} />
-            <Route path="/profiles" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/profiles" element={<Navigate to="/caregiver/individuals" replace />} />
             <Route path="/profiles/:profileId" element={<Navigate to="/caregiver/person/:profileId" replace />} />
             <Route path="/profiles/:profileId/overview" element={<Navigate to="/caregiver/person/:profileId" replace />} />
             <Route path="/profiles/:profileId/trends" element={<Navigate to="/caregiver/person/:profileId/pattern" replace />} />

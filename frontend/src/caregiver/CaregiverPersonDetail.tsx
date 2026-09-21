@@ -9,7 +9,8 @@ import {
   Plus, 
   Camera,
   Play,
-  AlertCircle
+  AlertCircle,
+  Settings
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
@@ -19,7 +20,7 @@ import { User, FamiliarPerson } from '../types';
 export default function CaregiverPersonDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { switchProfile } = useApp();
+  const { currentUser, switchProfile } = useApp();
   
   const [person, setPerson] = useState<User | null>(null);
   const [familiarPeople, setFamiliarPeople] = useState<FamiliarPerson[]>([]);
@@ -33,6 +34,11 @@ export default function CaregiverPersonDetail() {
   const [consentConfirmed, setConsentConfirmed] = useState(false);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
   const [savingPerson, setSavingPerson] = useState(false);
+
+  // Delete Profile Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingProfile, setDeletingProfile] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const personId = Number(id);
 
@@ -144,6 +150,27 @@ export default function CaregiverPersonDetail() {
     }
   };
 
+  const handleDeleteProfile = async () => {
+    setDeletingProfile(true);
+    setDeleteError(null);
+    try {
+      await api.deleteProfile(personId);
+      // If deleted profile was active in context, switch to another profile
+      const remaining = (await api.getProfiles(false)).filter(p => p.id !== personId);
+      if (currentUser?.id === personId) {
+        if (remaining.length > 0) {
+          switchProfile(remaining[0]);
+        }
+      }
+      setShowDeleteModal(false);
+      navigate('/caregiver/individuals');
+    } catch (err: any) {
+      console.error('Failed to delete profile:', err);
+      setDeleteError(err?.message || 'Failed to delete profile. Please ensure you have caregiver authorization.');
+      setDeletingProfile(false);
+    }
+  };
+
   const handleLaunchActivity = () => {
     if (person) {
       switchProfile(person);
@@ -157,17 +184,23 @@ export default function CaregiverPersonDetail() {
         {/* Top Back & Header */}
         <div className="flex items-center gap-3">
           <Link
-            to="/caregiver"
-            className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+            to="/caregiver/individuals"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+            title="Back to Individuals"
           >
             <ArrowLeft size={18} />
           </Link>
           <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                Profile & Photos
+              </span>
+            </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
               {person ? person.name || person.display_name : 'Individual Profile'}
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Manage verified family photos for Visual Recall activities and personal settings.
+              Manage family photos for Visual Recall activities, personal settings, and profile deletion.
             </p>
           </div>
         </div>
@@ -297,6 +330,58 @@ export default function CaregiverPersonDetail() {
           )}
         </div>
 
+        {/* PROFILE SETTINGS & DELETION */}
+        <div className="bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-5">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800 pb-3">
+            <Settings size={18} className="text-slate-500" />
+            <h3>Profile Settings</h3>
+          </div>
+
+          {/* Readonly Identity Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">Individual Name</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{person?.name || person?.display_name || '--'}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">Age</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{person?.age ? `${person.age} years` : 'Elder'}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">Language Preference</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                {person?.preferred_language === 'te' ? 'Telugu' : person?.preferred_language === 'hi' ? 'Hindi' : 'English'}
+              </span>
+            </div>
+          </div>
+
+          {/* Explicit Delete Profile Section */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60">
+              <div>
+                <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                  <Trash2 size={16} className="text-rose-600 dark:text-rose-400" />
+                  <span>Delete Profile</span>
+                </h4>
+                <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5 max-w-xl">
+                  Permanently delete {person?.name || 'this individual'}'s profile. This will remove all cognitive session history, baseline calibration records, and familiar photos. This action is non-reversible.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteModal(true);
+                }}
+                className="self-start sm:self-auto shrink-0 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>Delete Profile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Add Person Modal */}
         {showAddPersonModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
@@ -392,6 +477,84 @@ export default function CaregiverPersonDetail() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Profile Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+            <div className="bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl">
+              <div className="flex items-center gap-3 mb-3 text-rose-600 dark:text-rose-400">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center shrink-0">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    Delete {person?.name || 'Individual'}'s Profile?
+                  </h3>
+                  <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                    Permanent Destructive Action
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 mb-4 text-xs text-rose-800 dark:text-rose-300 leading-relaxed space-y-1.5">
+                <p className="font-semibold">
+                  Are you sure you want to permanently delete <strong className="text-rose-950 dark:text-rose-100">{person?.name}</strong>?
+                </p>
+                <p>
+                  This action will permanently delete:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] opacity-90">
+                  <li>All cognitive activity session history & telemetry</li>
+                  <li>Personal baseline calibration & MAD variance data</li>
+                  <li>On-device adaptive ML difficulty adjustments</li>
+                  <li>All verified family photos for Visual Recall</li>
+                </ul>
+                <p className="text-[11px] font-bold pt-1 text-rose-900 dark:text-rose-200">
+                  This action cannot be undone.
+                </p>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 mb-4 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled={deletingProfile}
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteError(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deletingProfile}
+                  onClick={handleDeleteProfile}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {deletingProfile ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      <span>Delete Profile</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -6,6 +6,7 @@ import {
   Activity, 
   User, 
   Users, 
+  UserCheck,
   Laptop, 
   LogOut, 
   ChevronLeft, 
@@ -38,10 +39,18 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
     { label: 'Profile', path: '/profile', icon: User },
   ];
 
-  // Caregiver navigation items
+  // Caregiver navigation items (Desktop / Tablet Sidebar)
   const caregiverNavItems = [
     { label: 'Overview', path: '/caregiver', icon: Users },
+    { label: 'Individuals', path: '/caregiver/individuals', icon: UserCheck },
     { label: 'Office Kit', path: '/caregiver/office-kit', icon: Laptop },
+  ];
+
+  // Caregiver mobile bottom navigation items: [ Overview ] [ Office Kit ] [ Individual ]
+  const caregiverMobileNavItems = [
+    { label: 'Overview', path: '/caregiver', icon: Users },
+    { label: 'Office Kit', path: '/caregiver/office-kit', icon: Laptop },
+    { label: 'Individual', path: '/caregiver/individuals', icon: UserCheck },
   ];
 
   const handleLogout = () => {
@@ -175,7 +184,9 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
             ) : (
               // Caregiver Workspace Sidebar Items
               caregiverNavItems.map(item => {
-                const isActive = path === item.path || (item.path !== '/caregiver' && path.startsWith(item.path));
+                const isActive = path === item.path || 
+                  (item.path !== '/caregiver' && path.startsWith(item.path)) ||
+                  (item.path === '/caregiver/individuals' && path.startsWith('/caregiver/person'));
                 const Icon = item.icon;
                 return (
                   <Link
@@ -268,8 +279,10 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
             );
           })
         ) : (
-          caregiverNavItems.concat([{ label: 'Individual', path: '/home', icon: Home }]).map(item => {
-            const isActive = path === item.path || (item.path !== '/caregiver' && path.startsWith(item.path));
+          caregiverMobileNavItems.map(item => {
+            const isActive = path === item.path || 
+              (item.path !== '/caregiver' && path.startsWith(item.path)) ||
+              (item.path === '/caregiver/individuals' && path.startsWith('/caregiver/person'));
             const Icon = item.icon;
             return (
               <Link

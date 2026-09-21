@@ -107,6 +107,8 @@ export default function CaregiverPersonPattern() {
   const [adaptiveHistory, setAdaptiveHistory] = useState<AdaptiveDecision[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'trends' | 'domains' | 'adaptive' | 'history'>('trends');
+  const [metricView, setMetricView] = useState<'accuracy' | 'latency'>('accuracy');
+  const [showAllAdaptive, setShowAllAdaptive] = useState(false);
 
   const personId = Number(id);
 
@@ -142,6 +144,7 @@ export default function CaregiverPersonPattern() {
 
   const sessionsCount = gameSessions.length;
   const isCalibrated = sessionsCount >= 3;
+  const personName = person?.name || person?.display_name || 'Individual';
 
   // Chart data formatting
   const chartData = [...gameSessions]
@@ -153,6 +156,16 @@ export default function CaregiverPersonPattern() {
       latency: Math.round(s.avg_response_time_ms / 100) / 10, // seconds
       date: new Date(s.started_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
     }));
+
+  const maxLatency = chartData.length > 0 ? Math.max(...chartData.map(d => d.latency), 3) : 5;
+  const latencyDomainUpper = Math.ceil(maxLatency * 1.2 * 10) / 10;
+  const xAxisInterval = chartData.length > 8 ? Math.ceil(chartData.length / 5) : 0;
+
+  const recentThreeSessions = [...gameSessions]
+    .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+    .slice(0, 3);
+
+  const displayedAdaptive = showAllAdaptive ? adaptiveHistory : adaptiveHistory.slice(0, 4);
 
   const overallStatusKey = overallTrend?.overall_status || (isCalibrated ? 'stable' : 'calibrating');
   const statusCfg = STATUS_CONFIG[overallStatusKey] || STATUS_CONFIG.stable;
@@ -172,9 +185,9 @@ export default function CaregiverPersonPattern() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-850 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-3">
             <Link
-              to="/caregiver"
+              to="/caregiver/individuals"
               className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-              title="Back to Overview"
+              title="Back to Individuals"
             >
               <ArrowLeft size={18} />
             </Link>
@@ -191,7 +204,7 @@ export default function CaregiverPersonPattern() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Personal Behavioral Baseline & Longitudinal Telemetry
+                Personal Behavioral Baseline & Longitudinal Telemetry • {personName}
               </p>
             </div>
           </div>
@@ -201,7 +214,7 @@ export default function CaregiverPersonPattern() {
               to={`/caregiver/person/${personId}`}
               className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold text-xs transition-colors"
             >
-              <span>Person Details & Photos</span>
+              <span>Profile & Photos</span>
             </Link>
 
             <button
@@ -226,7 +239,7 @@ export default function CaregiverPersonPattern() {
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {isCalibrated
-                  ? 'All deviations are calculated strictly relative to this individual’s own historical median (MAD standard deviation), never against arbitrary population averages.'
+                  ? `All deviations are calculated strictly relative to ${personName}’s own historical median (MAD standard deviation), never against arbitrary population averages.`
                   : 'Requires 3 completed sessions to calculate reliable personal medians and activate longitudinal deviation triggers.'}
               </p>
             </div>
@@ -249,10 +262,10 @@ export default function CaregiverPersonPattern() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('trends')}
-            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer shrink-0 ${
               activeTab === 'trends'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
@@ -262,58 +275,72 @@ export default function CaregiverPersonPattern() {
           </button>
           <button
             onClick={() => setActiveTab('domains')}
-            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer shrink-0 ${
               activeTab === 'domains'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Multi-Domain Signals ({trends.length})
+            Multi-Domain Signals ({trends.length} · {personName})
           </button>
           <button
             onClick={() => setActiveTab('adaptive')}
-            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer shrink-0 ${
               activeTab === 'adaptive'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Adaptive Decisions ({adaptiveHistory.length})
+            Adaptive Decisions ({adaptiveHistory.length} · {personName})
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors cursor-pointer shrink-0 ${
               activeTab === 'history'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Session History ({gameSessions.length})
+            Session History ({gameSessions.length} · {personName})
           </button>
         </div>
 
         {/* TAB 1: LONGITUDINAL TREND */}
         {activeTab === 'trends' && (
           <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-850 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-white dark:bg-slate-850 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Accuracy & Response Latency Over Time
+                    {metricView === 'accuracy' ? 'Session Accuracy (%) Over Time' : 'Response Latency (s) Over Time'}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Telemetry captured on-device across consecutive activity sessions
+                    Telemetry captured on-device across consecutive activity sessions • {personName}
                   </p>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-bold">
-                  <div className="flex items-center gap-1.5 text-blue-600">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    <span>Accuracy (%)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-amber-500">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span>Latency (s)</span>
-                  </div>
+
+                {/* Metric Selector Toggle */}
+                <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold shrink-0 self-start sm:self-auto">
+                  <button
+                    onClick={() => setMetricView('accuracy')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      metricView === 'accuracy'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Accuracy (%)
+                  </button>
+                  <button
+                    onClick={() => setMetricView('latency')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      metricView === 'latency'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Response Time (s)
+                  </button>
                 </div>
               </div>
 
@@ -322,8 +349,30 @@ export default function CaregiverPersonPattern() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} />
-                      <YAxis stroke="#888888" fontSize={11} tickLine={false} domain={[0, 100]} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#888888" 
+                        fontSize={11} 
+                        tickLine={false} 
+                        interval={xAxisInterval}
+                      />
+                      {metricView === 'accuracy' ? (
+                        <YAxis 
+                          stroke="#888888" 
+                          fontSize={11} 
+                          tickLine={false} 
+                          domain={[0, 100]} 
+                          unit="%" 
+                        />
+                      ) : (
+                        <YAxis 
+                          stroke="#888888" 
+                          fontSize={11} 
+                          tickLine={false} 
+                          domain={[0, latencyDomainUpper]} 
+                          unit="s" 
+                        />
+                      )}
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#1e293b',
@@ -333,30 +382,71 @@ export default function CaregiverPersonPattern() {
                           fontSize: '12px',
                         }}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="accuracy"
-                        stroke="#2563eb"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: '#2563eb' }}
-                        activeDot={{ r: 6 }}
-                        name="Accuracy %"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="latency"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        dot={{ r: 3, fill: '#f59e0b' }}
-                        name="Latency (s)"
-                      />
+                      {metricView === 'accuracy' ? (
+                        <Line
+                          type="monotone"
+                          dataKey="accuracy"
+                          stroke="#2563eb"
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: '#2563eb' }}
+                          activeDot={{ r: 6 }}
+                          name="Accuracy %"
+                        />
+                      ) : (
+                        <Line
+                          type="monotone"
+                          dataKey="latency"
+                          stroke="#f59e0b"
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: '#f59e0b' }}
+                          activeDot={{ r: 6 }}
+                          name="Latency (s)"
+                        />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="py-16 text-center text-slate-400">
                   <Activity size={36} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-xs font-medium">No session data recorded yet.</p>
+                  <p className="text-xs font-medium">No session data recorded yet for {personName}.</p>
+                </div>
+              )}
+
+              {/* Compact Recent Sessions Summary */}
+              {recentThreeSessions.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Recent Sessions Summary ({recentThreeSessions.length} of {gameSessions.length})
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium">{personName}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {recentThreeSessions.map((s, idx) => (
+                      <div
+                        key={s.id || idx}
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between"
+                      >
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                            {DOMAIN_LABELS[s.game_type] || s.game_type}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(s.started_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} • Level {s.difficulty}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 block">
+                            {Math.round(s.accuracy * 100)}%
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {(s.avg_response_time_ms / 1000).toFixed(1)}s
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -450,62 +540,116 @@ export default function CaregiverPersonPattern() {
 
         {/* TAB 3: ADAPTIVE DECISIONS */}
         {activeTab === 'adaptive' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                  {adaptiveHistory.length} Adaptive Decisions · {personName}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  On-device ML Random Forest tuning activity difficulty to maintain comfort and positive engagement
+                </p>
+              </div>
+            </div>
+
             {adaptiveHistory.length === 0 ? (
               <div className="p-8 text-center bg-white dark:bg-slate-850 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                 <Cpu size={36} className="mx-auto text-slate-400 mb-2" />
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">No Adaptive Adjustments Yet</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
-                  On-device ML Random Forest continuously evaluates session signals and maintains comfort.
+                  On-device ML Random Forest continuously evaluates session signals and maintains comfort for {personName}.
                 </p>
               </div>
             ) : (
-              adaptiveHistory.map((dec, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                      <Cpu size={18} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400">
-                          {dec.recommendation}
-                        </span>
-                        <span className="text-xs text-slate-400">•</span>
-                        <span className="text-xs text-slate-600 dark:text-slate-300 font-bold">
-                          Level {dec.previous_difficulty} → Level {dec.recommended_difficulty}
-                        </span>
+              <>
+                <div className="space-y-3">
+                  {displayedAdaptive.map((dec, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5"
+                    >
+                      {/* Top: Action Badge + Level Transition */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                              dec.recommendation === 'INCREASE'
+                                ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                : dec.recommendation === 'DECREASE'
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            }`}
+                          >
+                            {dec.recommendation}
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Level {dec.previous_difficulty} → Level {dec.recommended_difficulty}
+                          </span>
+                        </div>
+                        {dec.game_type && (
+                          <span className="text-[11px] font-semibold text-slate-400 capitalize">
+                            {DOMAIN_LABELS[dec.game_type] || dec.game_type.replace(/_/g, ' ')}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+
+                      {/* Body: Full-width comfortable explanation */}
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                         {dec.reason}
                       </p>
-                    </div>
-                  </div>
 
-                  <div className="text-right text-xs">
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 block">
-                      ⚡ &lt; 2ms
-                    </span>
-                    <span className="text-[10px] text-slate-400">On-Device RF</span>
-                  </div>
+                      {/* Footer: Compact badge with zero wrapping */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
+                        <span className="inline-flex items-center gap-1.5 font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          <Cpu size={12} className="text-emerald-500" />
+                          <span>On-device RF · &lt;2 ms</span>
+                        </span>
+                        {dec.timestamp && (
+                          <span>
+                            {new Date(dec.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
+
+                {/* Expander Button if more than 4 decisions */}
+                {adaptiveHistory.length > 4 && (
+                  <button
+                    onClick={() => setShowAllAdaptive(!showAllAdaptive)}
+                    className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer text-center"
+                  >
+                    {showAllAdaptive
+                      ? 'Show less (4 decisions) ↑'
+                      : `View all ${adaptiveHistory.length} decisions →`}
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
 
         {/* TAB 4: SESSION HISTORY */}
         {activeTab === 'history' && (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                  {gameSessions.length} Sessions Logged · {personName}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Chronological activity telemetry captured on-device
+                </p>
+              </div>
+            </div>
+
             {gameSessions.length === 0 ? (
               <div className="p-8 text-center bg-white dark:bg-slate-850 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                 <Clock size={36} className="mx-auto text-slate-400 mb-2" />
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">No Sessions Logged</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
-                  Start an activity session to record behavioral metrics.
+                  Start an activity session to record behavioral metrics for {personName}.
                 </p>
               </div>
             ) : (

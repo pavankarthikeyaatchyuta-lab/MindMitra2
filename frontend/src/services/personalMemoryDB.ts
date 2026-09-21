@@ -431,6 +431,17 @@ export class PersonalMemoryDB {
     } catch {}
   }
 
+  public static async deleteProfile(id: number): Promise<void> {
+    await this.clearUserData(id);
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction('profiles', 'readwrite');
+      tx.objectStore('profiles').delete(id);
+    } catch (e) {
+      console.warn('PersonalMemoryDB deleteProfile notice:', e);
+    }
+  }
+
   public static async purgeAll(): Promise<void> {
     try {
       const db = await this.getDB();
