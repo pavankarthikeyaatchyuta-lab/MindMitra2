@@ -11,12 +11,15 @@ import {
   TrendingUp, 
   TrendingDown, 
   ShieldCheck,
-  Volume2
+  Volume2,
+  Camera,
+  CameraOff,
 } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import { useApp } from '../context/AppContext';
 import { VoiceService } from '../services/voiceService';
 import { useTranslation } from '../i18n';
+import { VisualBehavioralMetrics } from '../services/visualBehavioralTracker';
 
 interface SessionResultData {
   activityTitle: string;
@@ -31,6 +34,7 @@ interface SessionResultData {
   adaptationAction: string;
   adaptationReason: string;
   onDeviceLatencyMs: number;
+  visualMetrics?: VisualBehavioralMetrics | null;
 }
 
 export default function SessionResult() {
@@ -57,6 +61,7 @@ export default function SessionResult() {
     const acc = metrics?.accuracy ?? 0.88;
     const latency = metrics?.avg_response_time_ms ?? 1800;
     const corr = metrics?.corrections ?? 1;
+    const visual = metrics?.visual_metrics ?? null;
 
     let consistency: 'Stable' | 'Minor Variation' | 'Variable' = 'Stable';
     let patternVerdict = 'Within your usual range.';
@@ -101,6 +106,7 @@ export default function SessionResult() {
       adaptationAction: action,
       adaptationReason: reason,
       onDeviceLatencyMs: adaptive?.inference_latency_ms || 1.4,
+      visualMetrics: visual,
     };
 
     setResult(finalResult);
@@ -195,6 +201,52 @@ export default function SessionResult() {
               {result.patternVerdict}
             </p>
           </div>
+
+          {/* Genuine Multimodal Visual Behavioral Sensor Signals */}
+          {result.visualMetrics && result.visualMetrics.face_detected_ratio !== null ? (
+            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 mb-3.5 space-y-2 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                  <Camera size={14} className="text-emerald-500" />
+                  Visual Behavioral Sensor Signals
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300 font-bold">
+                  On-Device Volatile
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
+                <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] text-slate-400 block font-bold">Face Presence</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">
+                    {Math.round((result.visualMetrics.face_detected_ratio || 0) * 100)}% frames
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] text-slate-400 block font-bold">Orientation</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">
+                    {result.visualMetrics.orientation_stability !== null && result.visualMetrics.orientation_stability >= 0.65 ? 'Stable' : 'Varied'}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-slate-400 block font-bold">Visual Hesitation</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">
+                    {((result.visualMetrics.visual_hesitation_ms || 0) / 1000).toFixed(1)}s
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-0.5">
+                {result.visualMetrics.status_summary || 'Behavioral presence observed in local volatile memory. Zero recordings stored.'}
+              </p>
+            </div>
+          ) : (
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 mb-3.5 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <CameraOff size={14} className="text-slate-400" />
+                <span>Camera Sensor: Optional / Inactive</span>
+              </div>
+              <span className="text-[10px] uppercase font-bold text-slate-400">Touch & Cadence Recorded</span>
+            </div>
+          )}
 
           {/* Next Activity & Why */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 text-left">

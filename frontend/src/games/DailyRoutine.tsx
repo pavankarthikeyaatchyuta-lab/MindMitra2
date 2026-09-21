@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
-import { CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
+import { Language } from '../types';
+import { CheckCircle2, RotateCcw, ArrowRight, Sparkles, Check, RefreshCw } from 'lucide-react';
 import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
@@ -10,6 +11,7 @@ export interface GameMetrics {
   corrections: number;
   completion_time_ms: number;
   total_events: number;
+  visual_metrics?: any;
 }
 
 export interface GameProps {
@@ -19,74 +21,101 @@ export interface GameProps {
   onComplete: (metrics: GameMetrics) => void;
 }
 
-interface RoutineItem {
+interface RoutineTaskDef {
+  id: string;
+  emoji: string;
+  labels: Record<Language, string>;
+}
+
+interface RoutineCategoryDef {
+  id: string;
+  names: Record<Language, string>;
+  items: RoutineTaskDef[];
+}
+
+interface DisplayRoutineItem {
   id: string;
   emoji: string;
   label: string;
   originalIndex: number;
 }
 
-const ROUTINES = [
+const ROUTINE_CATEGORIES: RoutineCategoryDef[] = [
   {
-    name: 'Morning Schedule',
+    id: 'morning',
+    names: {
+      en: 'Morning Schedule',
+      te: 'ఉదయపు దినచర్య',
+      hi: 'सुबह की दिनचर्या',
+    },
     items: [
-      { emoji: '🌅', label: 'Wake up' },
-      { emoji: '🪥', label: 'Brush teeth' },
-      { emoji: '🍳', label: 'Eat breakfast' },
-      { emoji: '💊', label: 'Take medicine' },
-      { emoji: '📰', label: 'Read newspaper' },
-      { emoji: '🚶', label: 'Go for morning walk' },
-      { emoji: '🍲', label: 'Have lunch' }
-    ]
+      { id: 'm1', emoji: '🌅', labels: { en: 'Wake up', te: 'మేల్కొనడం', hi: 'जागना' } },
+      { id: 'm2', emoji: '🪥', labels: { en: 'Brush teeth', te: 'పళ్ళు తోముకోవడం', hi: 'ब्रश करना' } },
+      { id: 'm3', emoji: '🍳', labels: { en: 'Eat breakfast', te: 'అల్పాహారం తినడం', hi: 'नाश्ता करना' } },
+      { id: 'm4', emoji: '💊', labels: { en: 'Take medicine', te: 'మందులు వేసుకోవడం', hi: 'दवा लेना' } },
+      { id: 'm5', emoji: '📰', labels: { en: 'Read newspaper', te: 'వార్తాపత్రిక చదవడం', hi: 'अखबार पढ़ना' } },
+      { id: 'm6', emoji: '🚶', labels: { en: 'Go for morning walk', te: 'ఉదయపు నడక', hi: 'सुबह की सैर' } },
+      { id: 'm7', emoji: '🍲', labels: { en: 'Have lunch', te: 'మధ్యాహ్న భోజనం', hi: 'दोपहर का खाना' } },
+    ],
   },
   {
-    name: 'Evening Schedule',
+    id: 'evening',
+    names: {
+      en: 'Evening Schedule',
+      te: 'సాయంత్రం దినచర్య',
+      hi: 'शाम की दिनचर्या',
+    },
     items: [
-      { emoji: '🏠', label: 'Return home' },
-      { emoji: '🧼', label: 'Wash hands' },
-      { emoji: '☕', label: 'Enjoy tea' },
-      { emoji: '📺', label: 'Watch news' },
-      { emoji: '🍽️', label: 'Eat dinner' },
-      { emoji: '💊', label: 'Take night pills' },
-      { emoji: '💤', label: 'Go to sleep' }
-    ]
+      { id: 'e1', emoji: '🏠', labels: { en: 'Return home', te: 'ఇంటికి చేరుకోవడం', hi: 'घर लौटना' } },
+      { id: 'e2', emoji: '🧼', labels: { en: 'Wash hands', te: 'చేతులు కడుక్కోవడం', hi: 'हाथ धोना' } },
+      { id: 'e3', emoji: '☕', labels: { en: 'Enjoy tea', te: 'టీ తాగడం', hi: 'चाय पीना' } },
+      { id: 'e4', emoji: '📺', labels: { en: 'Watch news', te: 'వార్తలు చూడటం', hi: 'समाचार देखना' } },
+      { id: 'e5', emoji: '🍽️', labels: { en: 'Eat dinner', te: 'రాత్రి భోజనం', hi: 'रात का खाना' } },
+      { id: 'e6', emoji: '💊', labels: { en: 'Take night pills', te: 'రాత్రి మందులు', hi: 'रात की गोलियां' } },
+      { id: 'e7', emoji: '💤', labels: { en: 'Go to sleep', te: 'నిద్రపోవడం', hi: 'सोने जाना' } },
+    ],
   },
   {
-    name: 'Cooking Activity',
+    id: 'cooking',
+    names: {
+      en: 'Cooking Activity',
+      te: 'వంట పని',
+      hi: 'खाना बनाना',
+    },
     items: [
-      { emoji: '🥬', label: 'Wash vegetables' },
-      { emoji: '🔪', label: 'Chop vegetables' },
-      { emoji: '🫕', label: 'Heat the pan' },
-      { emoji: '🧂', label: 'Add fresh spices' },
-      { emoji: '🍛', label: 'Cook and simmer' },
-      { emoji: '🍽️', label: 'Serve warm on plate' },
-      { emoji: '🧹', label: 'Clean kitchen counter' }
-    ]
-  }
+      { id: 'c1', emoji: '🥬', labels: { en: 'Wash vegetables', te: 'కూరగాయలు కడగడం', hi: 'सब्जियां धोना' } },
+      { id: 'c2', emoji: '🔪', labels: { en: 'Chop vegetables', te: 'కూరగాయలు కోయడం', hi: 'सब्जियां काटना' } },
+      { id: 'c3', emoji: '🫕', labels: { en: 'Heat the pan', te: 'బాణలి వేడి చేయడం', hi: 'पैन गर्म करना' } },
+      { id: 'c4', emoji: '🧂', labels: { en: 'Add fresh spices', te: 'మసాలాలు కలపడం', hi: 'मसाले डालना' } },
+      { id: 'c5', emoji: '🍛', labels: { en: 'Cook and simmer', te: 'ఉడికించడం', hi: 'पकाना' } },
+      { id: 'c6', emoji: '🍽️', labels: { en: 'Serve warm on plate', te: 'ప్లేట్‌లో వడ్డించడం', hi: 'थाली में परोसना' } },
+      { id: 'c7', emoji: '🧹', labels: { en: 'Clean kitchen counter', te: 'వంటగది శుభ్రం చేయడం', hi: 'रसोई साफ करना' } },
+    ],
+  },
 ];
 
 export default function DailyRoutine({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
   const { t, language } = useTranslation();
-  
+
   const [stage, setStage] = useState<'memorize' | 'recall'>('memorize');
-  const [targetSequence, setTargetSequence] = useState<RoutineItem[]>([]);
-  const [poolItems, setPoolItems] = useState<RoutineItem[]>([]);
-  const [selectedItems, setSelectedItems] = useState<RoutineItem[]>([]);
+  const [scheduleTitle, setScheduleTitle] = useState('');
+  const [targetSequence, setTargetSequence] = useState<DisplayRoutineItem[]>([]);
+  const [poolItems, setPoolItems] = useState<DisplayRoutineItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<DisplayRoutineItem[]>([]);
   const [isComplete, setIsComplete] = useState(false);
 
   const idleTimerRef = useRef<any>(null);
 
   const stats = useRef({
-    correctPlacements: 0,
-    errors: 0,
-    corrections: 0,
+    firstInteractionLatencyMs: 0,
     responseTimes: [] as number[],
+    corrections: 0,
     startTime: 0,
     lastActionTime: 0,
-    completed: false
+    completed: false,
   });
 
-  const itemCount = Math.min(6, difficulty + 2);
+  const itemCount = Math.min(6, Math.max(3, difficulty + 2));
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -105,31 +134,36 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
 
   useEffect(() => {
     initGame();
-  }, [difficulty, gameSessionId]);
+  }, [difficulty, gameSessionId, language]);
 
   const initGame = () => {
-    const routine = ROUTINES[Math.floor(Math.random() * ROUTINES.length)];
-    const chosenItems = routine.items.slice(0, itemCount).map((item, idx) => ({
-      id: `item-${idx}`,
+    // Pick routine category
+    const catIndex = Math.floor(Math.random() * ROUTINE_CATEGORIES.length);
+    const category = ROUTINE_CATEGORIES[catIndex];
+    const localizedTitle = category.names[language] || category.names.en;
+    setScheduleTitle(localizedTitle);
+
+    const chosenItems: DisplayRoutineItem[] = category.items.slice(0, itemCount).map((item, idx) => ({
+      id: item.id,
       emoji: item.emoji,
-      label: item.label,
-      originalIndex: idx
+      label: item.labels[language] || item.labels.en,
+      originalIndex: idx,
     }));
 
     setTargetSequence(chosenItems);
+    // Shuffle pool items
     setPoolItems([...chosenItems].sort(() => Math.random() - 0.5));
     setSelectedItems([]);
     setStage('memorize');
     setIsComplete(false);
 
     stats.current = {
-      correctPlacements: 0,
-      errors: 0,
-      corrections: 0,
+      firstInteractionLatencyMs: 0,
       responseTimes: [],
+      corrections: 0,
       startTime: Date.now(),
       lastActionTime: Date.now(),
-      completed: false
+      completed: false,
     };
   };
 
@@ -137,73 +171,149 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     setStage('recall');
     stats.current.lastActionTime = Date.now();
     resetIdleTimer();
+    VoiceService.speakContext('daily_routine', 'start', language, false);
   };
 
-  const [wrongItemId, setWrongItemId] = useState<string | null>(null);
-  const [clickDebounce, setClickDebounce] = useState(false);
-
-  const handleSelectPoolItem = (item: RoutineItem) => {
-    if (clickDebounce || stats.current.completed) return;
-    setClickDebounce(true);
-    setTimeout(() => setClickDebounce(false), 400);
-
+  // Step 5: User taps item from available pool -> places into sequence
+  const handleSelectPoolItem = (item: DisplayRoutineItem) => {
+    if (stats.current.completed || isComplete) return;
     resetIdleTimer();
+
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
+    if (stats.current.firstInteractionLatencyMs === 0) {
+      stats.current.firstInteractionLatencyMs = rt;
+    }
     stats.current.responseTimes.push(rt);
     stats.current.lastActionTime = now;
 
-    const nextIndex = selectedItems.length;
+    const newSelected = [...selectedItems, item];
+    setSelectedItems(newSelected);
+    setPoolItems(prev => prev.filter(p => p.id !== item.id));
 
-    if (item.originalIndex === nextIndex) {
-      setWrongItemId(null);
-      stats.current.correctPlacements++;
-      VoiceService.speakContext('daily_routine', 'success', language, false);
-      const newSelected = [...selectedItems, item];
-      setSelectedItems(newSelected);
-      setPoolItems(prev => prev.filter(p => p.id !== item.id));
-
-      if (newSelected.length === targetSequence.length) {
-        finishGame(newSelected);
-      }
-    } else {
-      stats.current.errors++;
-      VoiceService.speakContext('daily_routine', 'incorrect', language, false);
-      setWrongItemId(item.id);
-      setTimeout(() => setWrongItemId(null), 1200);
+    // If this completed all slots, auto-evaluate or allow submission
+    if (newSelected.length === targetSequence.length) {
+      finishGame(newSelected);
     }
   };
 
-  const handleUndo = () => {
-    if (selectedItems.length === 0 || stats.current.completed) return;
+  // User taps placed item in reconstructed sequence to remove it -> returns to pool
+  const handleRemoveSelectedItem = (item: DisplayRoutineItem) => {
+    if (stats.current.completed || isComplete) return;
+    resetIdleTimer();
+
     stats.current.corrections++;
+    stats.current.lastActionTime = Date.now();
+
+    setSelectedItems(prev => prev.filter(p => p.id !== item.id));
+    setPoolItems(prev => [...prev, item]);
+  };
+
+  // Undo last placement
+  const handleUndo = () => {
+    if (selectedItems.length === 0 || stats.current.completed || isComplete) return;
+    resetIdleTimer();
+
+    stats.current.corrections++;
+    stats.current.lastActionTime = Date.now();
+
     const lastItem = selectedItems[selectedItems.length - 1];
     setSelectedItems(prev => prev.slice(0, -1));
     setPoolItems(prev => [...prev, lastItem]);
   };
 
-  const finishGame = (finalSequence: RoutineItem[]) => {
+  const finishGame = (finalSequence: DisplayRoutineItem[]) => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (stats.current.completed) return;
     stats.current.completed = true;
     setIsComplete(true);
+
     const now = Date.now();
     const totalTime = now - stats.current.startTime;
     const avgRt = stats.current.responseTimes.length > 0
       ? stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length
-      : 2500;
+      : 2400;
 
-    const totalAttempts = stats.current.correctPlacements + stats.current.errors;
-    const accuracy = stats.current.correctPlacements / Math.max(1, totalAttempts);
+    // Evaluate matching sequence positions
+    let correctMatches = 0;
+    finalSequence.forEach((item, idx) => {
+      if (item.originalIndex === idx) {
+        correctMatches++;
+      }
+    });
+
+    const accuracy = correctMatches / targetSequence.length;
+    const errors = targetSequence.length - correctMatches;
+
+    // Trigger vocal feedback
+    if (accuracy >= 0.7) {
+      VoiceService.speakContext('daily_routine', 'success', language, false);
+    } else {
+      VoiceService.speakContext('daily_routine', 'incorrect', language, false);
+    }
 
     onComplete({
       accuracy: Math.min(1.0, Math.max(0.1, accuracy)),
-      avg_response_time_ms: avgRt,
+      avg_response_time_ms: Math.round(avgRt),
       repeat_errors: 0,
       corrections: stats.current.corrections,
       completion_time_ms: totalTime,
-      total_events: totalAttempts
+      total_events: targetSequence.length + stats.current.corrections,
     });
+  };
+
+  // Localized UI string dictionary
+  const uiTexts = {
+    standardOrder: {
+      en: 'Standard Daily Order',
+      te: 'ప్రామాణిక దినచర్య క్రమం',
+      hi: 'दैनिक दिनचर्या का क्रम',
+    },
+    memorizeSubtitle: {
+      en: 'Observe the natural sequence of daily tasks below. Tap continue when ready.',
+      te: 'క్రింది పనుల క్రమాన్ని గమనించండి. సిద్ధంగా ఉన్నప్పుడు ప్రారంభించండి.',
+      hi: 'नीचे दिए गए कार्यों के क्रम को देखें। तैयार होने पर शुरू करें।',
+    },
+    btnStartSequence: {
+      en: 'I Remember, Start Sequence',
+      te: 'నాకు గుర్తుంది, క్రమాన్ని ప్రారంభించండి',
+      hi: 'मुझे याद है, क्रम शुरू करें',
+    },
+    reconstructedTitle: {
+      en: 'Reconstructed Sequence',
+      te: 'మీరు అమర్చిన క్రమం',
+      hi: 'आपके द्वारा बनाया गया क्रम',
+    },
+    undo: {
+      en: 'Undo',
+      te: 'రద్దు',
+      hi: 'पूर्ववत करें',
+    },
+    tapTasksBelow: {
+      en: 'Tap tasks below in order from first to last',
+      te: 'మొదటి నుండి చివరి వరకు పనులను క్రమంలో నొక్కండి',
+      hi: 'पहले से आखिरी तक क्रम में नीचे दिए गए कार्यों को टैप करें',
+    },
+    chooseNext: {
+      en: 'Available Tasks (Tap to place):',
+      te: 'లభ్యమయ్యే పనులు (అమర్చడానికి నొక్కండి):',
+      hi: 'उपलब्ध कार्य (रखने के लिए टैप करें):',
+    },
+    slotLabel: {
+      en: 'Step',
+      te: 'దశ',
+      hi: 'चरण',
+    },
+    tapToRemove: {
+      en: 'Tap to return',
+      te: 'తిరిగి పంపండి',
+      hi: 'हटाने के लिए टैप करें',
+    },
+    phoneSensorActive: {
+      en: 'Phone Sensor Active: Observing sequencing cadence & hesitation intervals',
+      te: 'ఫోన్ సెన్సార్ సక్రియం: క్రమబద్ధత మరియు విరామ సమయాలను గమనిస్తున్నారు',
+      hi: 'फोन सेंसर सक्रिय: क्रमबद्धता और ठहराव का अवलोकन',
+    },
   };
 
   return (
@@ -211,12 +321,12 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
       {/* Header Info */}
       <div className="w-full card p-5 mb-4">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span>📋</span> {t('games.routine.title', 'Daily Routine Recall')}
+          <span>📋</span> {t('games.routine.title', 'Daily Routine Recall')} — {scheduleTitle}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           {stage === 'memorize'
-            ? 'Observe the natural sequence of daily tasks below. Click continue when ready.'
-            : 'Rebuild the daily routine in the correct order from start to finish.'}
+            ? (uiTexts.memorizeSubtitle[language] || uiTexts.memorizeSubtitle.en)
+            : (uiTexts.tapTasksBelow[language] || uiTexts.tapTasksBelow.en)}
         </p>
       </div>
 
@@ -224,18 +334,19 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
       <div className="w-full mb-5 px-4 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 shadow-xs">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-semibold text-slate-900 dark:text-white">Phone Sensor Active:</span>
-          <span className="text-slate-500 dark:text-slate-400">Observing sequencing cadence & hesitation intervals</span>
+          <span className="font-semibold text-slate-900 dark:text-white">
+            {uiTexts.phoneSensorActive[language] || uiTexts.phoneSensorActive.en}
+          </span>
         </div>
         <span className="hidden sm:inline text-[11px] font-mono text-slate-400">Level {difficulty}</span>
       </div>
 
       {stage === 'memorize' ? (
-        /* Memorize Stage */
-        <div className="w-full space-y-4">
+        /* Step 1: Memorize Stage */
+        <div className="w-full space-y-4 animate-in fade-in">
           <div className="card p-6 border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20">
             <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4">
-              Standard Daily Order
+              {uiTexts.standardOrder[language] || uiTexts.standardOrder.en}: {scheduleTitle}
             </h3>
 
             <div className="space-y-2.5">
@@ -259,86 +370,104 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
               onClick={handleStartRecall}
               className="elderly-btn-primary text-base py-3.5 px-8 rounded-xl inline-flex items-center gap-2 shadow-sm"
             >
-              <span>I Remember, Start Sequence</span>
+              <span>{uiTexts.btnStartSequence[language] || uiTexts.btnStartSequence.en}</span>
               <ArrowRight size={18} />
             </button>
           </div>
         </div>
       ) : (
-        /* Recall Stage */
-        <div className="w-full space-y-6">
-          {/* Constructed Sequence Box */}
-          <div className="card p-6 min-h-[140px]">
+        /* Step 2-5: Recall & Reconstructive Placement */
+        <div className="w-full space-y-6 animate-in fade-in">
+          {/* Target Reconstructed Sequence Slots */}
+          <div className="card p-6 min-h-[160px]">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Reconstructed Sequence ({selectedItems.length}/{targetSequence.length})
+                {uiTexts.reconstructedTitle[language] || uiTexts.reconstructedTitle.en} ({selectedItems.length}/{targetSequence.length})
               </span>
               {selectedItems.length > 0 && !isComplete && (
                 <button
                   onClick={handleUndo}
-                  className="text-xs font-semibold text-slate-700 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-1"
+                  className="text-xs font-semibold text-slate-700 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 cursor-pointer"
                 >
                   <RotateCcw size={12} />
-                  <span>Undo</span>
+                  <span>{uiTexts.undo[language] || uiTexts.undo.en}</span>
                 </button>
               )}
             </div>
 
             <div className="space-y-2">
-              {selectedItems.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 flex items-center gap-3"
-                >
-                  <span className="w-6 h-6 rounded-md bg-emerald-200 dark:bg-emerald-800 font-bold text-xs flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <span className="text-xl">{item.emoji}</span>
-                  <span className="text-xs sm:text-sm font-bold">{item.label}</span>
-                  <CheckCircle2 size={16} className="ml-auto text-emerald-600 dark:text-emerald-400" />
-                </div>
-              ))}
+              {/* Render each slot (either filled or empty placeholder) */}
+              {Array.from({ length: targetSequence.length }).map((_, slotIdx) => {
+                const filledItem = selectedItems[slotIdx];
+                if (filledItem) {
+                  return (
+                    <div
+                      key={filledItem.id}
+                      onClick={() => handleRemoveSelectedItem(filledItem)}
+                      className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 flex items-center gap-3 transition-all cursor-pointer hover:border-emerald-500"
+                      title={uiTexts.tapToRemove[language] || uiTexts.tapToRemove.en}
+                    >
+                      <span className="w-6 h-6 rounded-md bg-emerald-200 dark:bg-emerald-800 font-bold text-xs flex items-center justify-center">
+                        {slotIdx + 1}
+                      </span>
+                      <span className="text-xl">{filledItem.emoji}</span>
+                      <span className="text-xs sm:text-sm font-bold">{filledItem.label}</span>
+                      <span className="ml-auto text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ {uiTexts.tapToRemove[language] || uiTexts.tapToRemove.en}
+                      </span>
+                    </div>
+                  );
+                }
 
-              {selectedItems.length === 0 && (
-                <div className="py-6 text-center text-xs text-slate-700 dark:text-slate-400 italic">
-                  Tap tasks below in order from first to last
-                </div>
-              )}
+                const isCurrentNext = slotIdx === selectedItems.length;
+                return (
+                  <div
+                    key={`slot-${slotIdx}`}
+                    className={`p-3 rounded-xl border border-dashed flex items-center gap-3 transition-all ${
+                      isCurrentNext
+                        ? 'border-blue-400 dark:border-blue-600 bg-blue-50/30 dark:bg-blue-950/20 text-blue-600 dark:text-blue-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 font-bold text-xs flex items-center justify-center">
+                      {slotIdx + 1}
+                    </span>
+                    <span className="text-xs italic">
+                      {isCurrentNext
+                        ? `[ ${(uiTexts.slotLabel[language] || uiTexts.slotLabel.en)} ${slotIdx + 1}: ${(uiTexts.chooseNext[language] || uiTexts.chooseNext.en)} ]`
+                        : `[ ${(uiTexts.slotLabel[language] || uiTexts.slotLabel.en)} ${slotIdx + 1} ]`}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Item Options Pool */}
-          {!isComplete && (
+          {/* Available Tasks Pool */}
+          {poolItems.length > 0 && !isComplete && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black text-black dark:text-white uppercase tracking-wider block">
-                  Choose Next Step:
-                </span>
-                {wrongItemId && (
-                  <span className="text-xs font-bold text-rose-600 dark:text-rose-400 animate-pulse">
-                    ⚠️ Not the next step in sequence — try again!
-                  </span>
-                )}
-              </div>
+              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider block px-1">
+                {uiTexts.chooseNext[language] || uiTexts.chooseNext.en}
+              </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {poolItems.map((item) => {
-                  const isWrong = wrongItemId === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleSelectPoolItem(item)}
-                      className={`p-3.5 rounded-xl border-2 text-left flex items-center gap-3 shadow-xs transition-all cursor-pointer ${
-                        isWrong
-                          ? 'bg-rose-100 dark:bg-rose-950 border-rose-500 text-rose-950 dark:text-rose-200 animate-bounce'
-                          : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:border-blue-600 text-black dark:text-white'
-                      }`}
-                    >
-                      <span className="text-2xl">{item.emoji}</span>
-                      <span className="text-xs sm:text-sm font-bold">{item.label}</span>
-                    </button>
-                  );
-                })}
+                {poolItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSelectPoolItem(item)}
+                    className="p-3.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 bg-white dark:bg-slate-800 text-black dark:text-white text-left flex items-center gap-3 shadow-xs transition-all cursor-pointer active:scale-98"
+                  >
+                    <span className="text-2xl">{item.emoji}</span>
+                    <span className="text-xs sm:text-sm font-bold">{item.label}</span>
+                  </button>
+                ))}
               </div>
+            </div>
+          )}
+
+          {/* If all slots filled, show completed notice */}
+          {selectedItems.length === targetSequence.length && isComplete && (
+            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 text-emerald-800 dark:text-emerald-200 text-center font-bold text-sm">
+              ✓ {language === 'te' ? 'క్రమం విజయవంతంగా రికార్డ్ చేయబడింది!' : language === 'hi' ? 'क्रम सफलतापूर्वक रिकॉर्ड किया गया!' : 'Sequence successfully recorded!'}
             </div>
           )}
         </div>

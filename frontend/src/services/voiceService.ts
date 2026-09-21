@@ -54,7 +54,24 @@ class BaseBrowserVoiceProvider implements VoiceProvider {
     match = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
     if (match) return match;
 
-    // 4. English fallback ONLY if English provider
+    // 4. Regional language name and unicode matching
+    if (this.language === 'te') {
+      match = voices.find(v => {
+        const str = (v.name + ' ' + v.lang).toLowerCase();
+        return str.includes('telugu') || str.includes('తెలుగు') || str.includes('te-in') || str.includes('te_in');
+      });
+      if (match) return match;
+    }
+
+    if (this.language === 'hi') {
+      match = voices.find(v => {
+        const str = (v.name + ' ' + v.lang).toLowerCase();
+        return str.includes('hindi') || str.includes('हिन्दी') || str.includes('hi-in') || str.includes('hi_in');
+      });
+      if (match) return match;
+    }
+
+    // 5. English fallback ONLY if English provider
     if (this.language === 'en') {
       return voices[0] || null;
     }
@@ -117,13 +134,13 @@ class EnglishVoiceProvider extends BaseBrowserVoiceProvider {
 
 class TeluguVoiceProvider extends BaseBrowserVoiceProvider {
   constructor() {
-    super('te', 'te-IN', ['te-IN', 'te_IN', 'te']);
+    super('te', 'te-IN', ['te-IN', 'te_IN', 'te', 'tel-IN', 'tel', 'te-telu-in']);
   }
 }
 
 class HindiVoiceProvider extends BaseBrowserVoiceProvider {
   constructor() {
-    super('hi', 'hi-IN', ['hi-IN', 'hi_IN', 'hi']);
+    super('hi', 'hi-IN', ['hi-IN', 'hi_IN', 'hi', 'hin-IN', 'hin']);
   }
 }
 
@@ -144,6 +161,25 @@ export class VoiceService {
 
   private static listeners: Set<(state: VoiceState) => void> = new Set();
   private static cooldownMs: number = 3000; // 3.0-second cooldown for non-priority cues
+  private static initialized: boolean = false;
+
+  public static init() {
+    if (this.initialized || typeof window === 'undefined' || !window.speechSynthesis) return;
+    this.initialized = true;
+    window.speechSynthesis.onvoiceschanged = () => {
+      const curLang = this.state.currentLanguage;
+      const provider = this.providers[curLang] || this.providers.en;
+      this.updateState({
+        isVoiceAvailable: provider.isAvailable(),
+      });
+    };
+  }
+
+  public static isLanguageVoiceAvailable(lang: Language): boolean {
+    const provider = this.providers[lang];
+    if (!provider) return false;
+    return provider.isAvailable();
+  }
 
   public static getState(): VoiceState {
     return { ...this.state };
@@ -233,3 +269,7 @@ export class VoiceService {
     });
   }
 }
+
+// Auto-initialize browser speech synthesis listeners
+VoiceService.init();
+

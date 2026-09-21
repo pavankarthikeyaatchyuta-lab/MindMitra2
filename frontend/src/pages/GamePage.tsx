@@ -19,6 +19,8 @@ import { ArrowLeft, Star, ChevronRight, Volume2, VolumeX, Sparkles, CheckCircle2
 import { predictOnDevice } from '../services/onDeviceInference';
 import { PersonalBaselineEngine } from '../services/personalBaselineEngine';
 import { OfficeKitBridge } from '../services/officeKitBridge';
+import { PersonalMemoryDB } from '../services/personalMemoryDB';
+import { VisualBehavioralTracker, VisualBehavioralMetrics } from '../services/visualBehavioralTracker';
 
 const GAME_TYPES: Record<string, GameType> = {
   memory: 'memory_match',
@@ -77,8 +79,11 @@ export default function GamePage() {
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const visualTrackerRef = useRef<VisualBehavioralTracker>(new VisualBehavioralTracker());
+  const [visualStatus, setVisualStatus] = useState<string>('Face detected • Orientation stable');
 
   const stopCameraSensor = useCallback(() => {
+    visualTrackerRef.current.stop();
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       cameraStreamRef.current = null;
@@ -104,7 +109,11 @@ export default function GamePage() {
       if (cameraVideoRef.current) {
         cameraVideoRef.current.srcObject = stream;
         cameraVideoRef.current.onloadedmetadata = () => {
-          cameraVideoRef.current?.play().catch((err: unknown) => console.warn('Camera preview notice:', err));
+          cameraVideoRef.current?.play().then(() => {
+            if (cameraVideoRef.current) {
+              visualTrackerRef.current.start(cameraVideoRef.current);
+            }
+          }).catch((err: unknown) => console.warn('Camera preview notice:', err));
         };
       }
       setCameraSensorActive(true);
@@ -114,6 +123,17 @@ export default function GamePage() {
       setCameraSensorActive(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!cameraSensorActive) return;
+    const interval = setInterval(() => {
+      const m = visualTrackerRef.current.getCurrentMetrics();
+      if (m.status_summary) {
+        setVisualStatus(m.status_summary);
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [cameraSensorActive]);
 
   useEffect(() => {
     return () => {
@@ -153,6 +173,10 @@ export default function GamePage() {
           try {
             const parsed = JSON.parse(savedUser);
             uid = parsed.id;
+            const curLang = localStorage.getItem('mindmitra_lang');
+            if (curLang) {
+              parsed.preferred_language = curLang;
+            }
             switchProfile(parsed);
           } catch {}
         }
@@ -212,7 +236,14 @@ export default function GamePage() {
   }, [activeKey, currentUser?.id]);
 
   const handleGameComplete = useCallback(async (metrics: any) => {
-    setLastMetrics(metrics);
+    // Capture on-device visual behavioral sensor metrics if camera active
+    const visualMetrics = cameraSensorActive ? visualTrackerRef.current.getCurrentMetrics() : null;
+    const enrichedMetrics = {
+      ...metrics,
+      visual_metrics: visualMetrics,
+    };
+
+    setLastMetrics(enrichedMetrics);
     setFinished(true);
 
     if (activeKey) {
@@ -305,15 +336,29 @@ export default function GamePage() {
       VoiceService.speakContext(gt, 'completion', language, true);
     }
 
-    // Save for SessionResult page
+    // Save for SessionResult page and offline PersonalMemoryDB
     const sessionResultId = gameSessionId || Date.now();
     sessionStorage.setItem('mindmitra_last_metrics', JSON.stringify({
-      ...metrics,
+      ...enrichedMetrics,
       difficulty,
       game_type: gt,
       id: sessionResultId,
     }));
     sessionStorage.setItem('mindmitra_last_adaptive', JSON.stringify(onDeviceRec));
+
+    // Save to PersonalMemoryDB offline first
+    PersonalMemoryDB.recordSession({
+      userId: activeUserId,
+      domain: gt === 'daily_routine' ? 'routine' : gt === 'memory_match' ? 'memory' : gt === 'pattern_recall' ? 'visual' : 'overall',
+      accuracy: metrics.accuracy,
+      mean_response_time_ms: metrics.avg_response_time_ms,
+      corrections: metrics.corrections,
+      repeat_errors: metrics.repeat_errors,
+      completion_time_ms: metrics.completion_time_ms,
+      difficulty,
+      timestamp: new Date().toISOString(),
+      visual_metrics: visualMetrics,
+    }).catch(e => console.warn('PersonalMemoryDB recordSession notice:', e));
 
     // 4. Background Sync to Cloud Backend
     if (gameSessionId) {
@@ -493,7 +538,7 @@ export default function GamePage() {
             </div>
           ) : (
             /* Active Game Screen */
-            <div>
+            <div onPointerDown={() => visualTrackerRef.current.recordUserInteraction()}>
               <SynchronizedVoiceBanner
                 language={language}
                 currentText={InstructionService.get(gt, 'instruction', language)}
@@ -516,11 +561,14 @@ export default function GamePage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-emerald-400">On-Device Visual Cadence Sensor</span>
+                        <span className="text-xs font-bold text-emerald-400">On-Device Visual Behavioral Sensor</span>
                         <span className="text-[10px] px-1.5 py-0.5 bg-emerald-950/80 text-emerald-300 rounded-sm font-semibold border border-emerald-800">Active</span>
                       </div>
-                      <p className="text-[11px] text-slate-300">
-                        Observing interaction cadence in volatile device memory. Zero recordings stored or uploaded.
+                      <p className="text-[11px] text-emerald-300 font-semibold mt-0.5">
+                        ● {visualStatus}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Observing interaction cadence in volatile memory. Zero recordings stored.
                       </p>
                     </div>
                   </div>

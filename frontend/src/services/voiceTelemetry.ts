@@ -6,6 +6,8 @@
  * NOTE: Strictly behavioral observation signals. Zero raw audio uploaded. Zero clinical diagnostic claims.
  */
 
+import { Language } from '../types';
+
 export interface VoiceBehavioralVector {
   response_latency_ms: number; // Time from prompt completion to first detected word
   speech_duration_ms: number;   // Total duration of speech
@@ -20,33 +22,84 @@ export interface VoiceBehavioralVector {
 
 export interface VoiceRecallPrompt {
   id: string;
-  question: string;
-  category: string;
+  question: Record<Language, string>;
+  category: Record<Language, string>;
   expectedItemCount: number;
-  sampleKeywords: string[];
+  sampleKeywords: Record<Language, string[]>;
+}
+
+export function getPromptQuestion(prompt: VoiceRecallPrompt, lang: Language = 'en'): string {
+  if (typeof prompt.question === 'string') return prompt.question;
+  return prompt.question[lang] || prompt.question.en || '';
+}
+
+export function getPromptCategory(prompt: VoiceRecallPrompt, lang: Language = 'en'): string {
+  if (typeof prompt.category === 'string') return prompt.category;
+  return prompt.category[lang] || prompt.category.en || '';
+}
+
+export function getPromptKeywords(prompt: VoiceRecallPrompt, lang: Language = 'en'): string[] {
+  if (Array.isArray(prompt.sampleKeywords)) return prompt.sampleKeywords;
+  return prompt.sampleKeywords[lang] || prompt.sampleKeywords.en || [];
 }
 
 export const DEFAULT_VOICE_PROMPTS: VoiceRecallPrompt[] = [
   {
     id: 'morning_routine',
-    question: 'Tell me three things you did this morning (for example: tea, walked, read the paper).',
-    category: 'Daily Temporal Sequence',
+    category: {
+      en: 'Daily Temporal Sequence',
+      te: 'రోజువారీ దినచర్య క్రమం',
+      hi: 'दैनिक दिनचर्या क्रम',
+    },
+    question: {
+      en: 'Tell me three things you did this morning (for example: tea, walked, read the paper).',
+      te: 'ఈ ఉదయం మీరు చేసిన మూడు పనులను చెప్పండి (ఉదాహరణకు: టీ తాగడం, నడవడం, వార్తాపత్రిక చదవడం).',
+      hi: 'आज सुबह आपने जो तीन काम किए, उनके नाम बताएं (जैसे: चाय, टहलना, अखबार पढ़ना)।',
+    },
     expectedItemCount: 3,
-    sampleKeywords: ['tea', 'coffee', 'walk', 'bath', 'breakfast', 'yoga', 'newspaper', 'paper', 'prayer', 'pooja', 'water', 'medicine', 'brushed'],
+    sampleKeywords: {
+      en: ['tea', 'coffee', 'walk', 'bath', 'breakfast', 'yoga', 'newspaper', 'paper', 'prayer', 'pooja', 'water', 'medicine', 'brushed'],
+      te: ['టీ', 'కాఫీ', 'నడక', 'స్నానం', 'అల్పాహారం', 'టిఫిన్', 'యోగా', 'పేపర్', 'వార్తాపత్రిక', 'పూజ', 'నీరు', 'మందులు', 'బ్రష్'],
+      hi: ['चाय', 'कॉफी', 'सैर', 'टहलना', 'स्नान', 'नाश्ता', 'योग', 'अखबार', 'पूजा', 'पानी', 'दवा', 'ब्रश'],
+    },
   },
   {
     id: 'favourite_foods',
-    question: 'Name three foods or fruits you enjoy having for lunch.',
-    category: 'Semantic Category Recall',
+    category: {
+      en: 'Semantic Category Recall',
+      te: 'ఆహార పదార్థాల జ్ఞాపకశక్తి',
+      hi: 'खाद्य पदार्थ स्मरण',
+    },
+    question: {
+      en: 'Name three foods or fruits you enjoy having for lunch.',
+      te: 'భోజనంలో మీకు ఇష్టమైన మూడు ఆహారాలు లేదా పండ్ల పేర్లు చెప్పండి (ఉదాహరణకు: అన్నం, పప్పు, పండ్లు).',
+      hi: 'दोपहर के खाने में आपको पसंद आने वाले तीन खाद्य पदार्थों या फलों के नाम बताएं।',
+    },
     expectedItemCount: 3,
-    sampleKeywords: ['dal', 'rice', 'roti', 'chapati', 'apple', 'banana', 'mango', 'curd', 'sabzi', 'salad', 'idli', 'dosa'],
+    sampleKeywords: {
+      en: ['dal', 'rice', 'roti', 'chapati', 'apple', 'banana', 'mango', 'curd', 'sabzi', 'salad', 'idli', 'dosa'],
+      te: ['అన్నం', 'పప్పు', 'రోటీ', 'చపాతీ', 'యాపిల్', 'అరటిపండు', 'మామిడి', 'పెరుగు', 'కూర', 'సాంబార్', 'ఇడ్లీ', 'దోశ'],
+      hi: ['दाल', 'चावल', 'रोटी', 'चपाती', 'सेब', 'केला', 'आम', 'दही', 'सब्जी', 'सलाद', 'इडली', 'डोसा'],
+    },
   },
   {
     id: 'recent_places',
-    question: 'Name three places in your home or neighborhood you visited this week.',
-    category: 'Spatial Orientation Recall',
+    category: {
+      en: 'Spatial Orientation Recall',
+      te: 'పరిసర ప్రదేశాల జ్ఞాపకం',
+      hi: 'स्थान एवं दिशा स्मरण',
+    },
+    question: {
+      en: 'Name three places in your home or neighborhood you visited this week.',
+      te: 'ఈ వారం మీరు సందర్శించిన మీ ఇల్లు లేదా పరిసరాల్లోని మూడు ప్రదేశాల పేర్లు చెప్పండి (ఉదాహరణకు: తోట, బాల్కనీ, గుడి).',
+      hi: 'इस सप्ताह आपने अपने घर या पड़ोस में जिन तीन स्थानों का दौरा किया, उनके नाम बताएं।',
+    },
     expectedItemCount: 3,
-    sampleKeywords: ['garden', 'balcony', 'park', 'temple', 'market', 'kitchen', 'terrace', 'verandah', 'shop', 'hall', 'room'],
+    sampleKeywords: {
+      en: ['garden', 'balcony', 'park', 'temple', 'market', 'kitchen', 'terrace', 'verandah', 'shop', 'hall', 'room'],
+      te: ['తోట', 'బాల్కనీ', 'పార్కు', 'గుడి', 'మార్కెట్', 'వంటగది', 'మేడ', 'వరండా', 'దుకాణం', 'హాలు', 'గది'],
+      hi: ['बगीचा', 'बालकनी', 'पार्क', 'मंदिर', 'बाजार', 'रसोई', 'छत', 'बरामदा', 'दुकान', 'हॉल', 'कमरा'],
+    },
   },
 ];
 
@@ -69,6 +122,7 @@ export class VoiceSensorTracker {
 
   public startListening(
     prompt: VoiceRecallPrompt,
+    language: Language = 'en',
     onStatusChange: (status: 'listening' | 'speaking' | 'completed' | 'error') => void,
     onTranscriptUpdate: (transcript: string) => void
   ): Promise<VoiceBehavioralVector> {
@@ -90,7 +144,8 @@ export class VoiceSensorTracker {
       const recog = new SpeechRecognition();
       recog.continuous = true;
       recog.interimResults = true;
-      recog.lang = 'en-US';
+      // Configure speech recognition locale accurately for Telugu, Hindi, or English
+      recog.lang = language === 'te' ? 'te-IN' : language === 'hi' ? 'hi-IN' : 'en-IN';
 
       this.recognition = recog;
       this.isListening = true;
@@ -120,12 +175,13 @@ export class VoiceSensorTracker {
         // Calculate sequence completeness based on detected target concepts
         const lowerTranscript = finalTranscript.toLowerCase();
         let matchedCount = 0;
-        for (const kw of prompt.sampleKeywords) {
-          if (lowerTranscript.includes(kw)) {
+        const keywords = getPromptKeywords(prompt, language);
+        for (const kw of keywords) {
+          if (lowerTranscript.includes(kw.toLowerCase())) {
             matchedCount++;
           }
         }
-        // Approximate count by comma/and separation if keyword list didn't capture dialect
+        // Approximate count by clause separation if keyword list didn't capture dialect
         const clauseCount = finalTranscript.split(/,|and|then|\s{2,}/i).filter(s => s.trim().length > 2).length;
         const effectiveCount = Math.max(matchedCount, Math.min(clauseCount, prompt.expectedItemCount));
         const sequenceCompleteness = Math.min(1.0, effectiveCount / prompt.expectedItemCount);

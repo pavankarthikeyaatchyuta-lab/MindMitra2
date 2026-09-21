@@ -73,13 +73,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function validateAuth() {
       const savedUserStr = localStorage.getItem('mindmitra_current_user');
+      const explicitLang = localStorage.getItem('mindmitra_lang');
       if (savedUserStr) {
         try {
           const parsed = JSON.parse(savedUserStr);
-          if (parsed.preferred_language) {
+          if (explicitLang) {
+            parsed.preferred_language = explicitLang;
+          } else if (parsed.preferred_language) {
             localStorage.setItem('mindmitra_lang', parsed.preferred_language);
             window.dispatchEvent(new CustomEvent('mindmitra_language_change', { detail: { language: parsed.preferred_language } }));
           }
+          setCurrentUser(parsed);
         } catch {}
       }
 
@@ -91,9 +95,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setCaregiver(res.caregiver);
             localStorage.setItem('mindmitra_caregiver', JSON.stringify(res.caregiver));
 
-            // Auto-select active profile if none is currently selected
+            // Auto-select active profile if none is currently selected in local storage
             const savedUser = localStorage.getItem('mindmitra_current_user');
-            if (!savedUser || !currentUser) {
+            if (!savedUser) {
               try {
                 const profs = await api.getProfiles();
                 if (profs && profs.length > 0) {

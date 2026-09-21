@@ -23,6 +23,8 @@ export interface StoredProfile {
   created_at: string;
 }
 
+import { VisualBehavioralMetrics } from './visualBehavioralTracker';
+
 export interface StoredSessionEvidence {
   id?: string;
   userId: number;
@@ -40,6 +42,7 @@ export interface StoredSessionEvidence {
     hesitationCount?: number;
     totalTaps?: number;
   };
+  visual_metrics?: VisualBehavioralMetrics | null;
 }
 
 export interface StoredBaseline {

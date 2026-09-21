@@ -27,6 +27,9 @@ export default function UserProfile() {
   const handleLanguageChange = async (newLang: Language) => {
     setLanguage(newLang);
     if (currentUser) {
+      const updatedUser = { ...currentUser, preferred_language: newLang };
+      switchProfile(updatedUser);
+      localStorage.setItem('mindmitra_current_user', JSON.stringify(updatedUser));
       try {
         await updateUserProfile(currentUser.id, { preferred_language: newLang });
       } catch {}
