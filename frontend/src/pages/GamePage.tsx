@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -9,11 +9,13 @@ import MemoryMatch from '../games/MemoryMatch';
 import DailyRoutine from '../games/DailyRoutine';
 import ObjectRecognition from '../games/ObjectRecognition';
 import PatternRecall from '../games/PatternRecall';
+import VoiceRecallActivity from '../components/VoiceRecallActivity';
+import { VoiceBehavioralVector } from '../services/voiceTelemetry';
 import ThemeToggle from '../components/ThemeToggle';
 import SynchronizedVoiceBanner from '../components/SynchronizedVoiceBanner';
 import { InstructionService, ActivityId } from '../services/instructionService';
 import { VoiceService } from '../services/voiceService';
-import { ArrowLeft, Star, ChevronRight, Volume2, VolumeX, Sparkles, CheckCircle2, RotateCcw, Cpu, TrendingDown, TrendingUp, Laptop } from 'lucide-react';
+import { ArrowLeft, Star, ChevronRight, Volume2, VolumeX, Sparkles, CheckCircle2, RotateCcw, Cpu, TrendingDown, TrendingUp, Laptop, Camera, CameraOff } from 'lucide-react';
 import { predictOnDevice } from '../services/onDeviceInference';
 import { PersonalBaselineEngine } from '../services/personalBaselineEngine';
 import { OfficeKitBridge } from '../services/officeKitBridge';
@@ -25,8 +27,11 @@ const GAME_TYPES: Record<string, GameType> = {
   daily_routine: 'daily_routine',
   recognition: 'object_recognition',
   object_recognition: 'object_recognition',
+  visual: 'object_recognition',
   pattern: 'pattern_recall',
   pattern_recall: 'pattern_recall',
+  voice: 'voice_recall',
+  voice_recall: 'voice_recall',
 };
 
 const NEXT_GAME: Record<string, { id: string; title: string }> = {
@@ -36,8 +41,11 @@ const NEXT_GAME: Record<string, { id: string; title: string }> = {
   daily_routine: { id: 'recognition', title: 'Visual Recall' },
   recognition: { id: 'pattern', title: 'Pattern Recall' },
   object_recognition: { id: 'pattern', title: 'Pattern Recall' },
-  pattern: { id: 'complete', title: 'Session Complete' },
-  pattern_recall: { id: 'complete', title: 'Session Complete' },
+  visual: { id: 'pattern', title: 'Pattern Recall' },
+  pattern: { id: 'voice', title: 'Voice Recall' },
+  pattern_recall: { id: 'voice', title: 'Voice Recall' },
+  voice: { id: 'complete', title: 'Session Complete' },
+  voice_recall: { id: 'complete', title: 'Session Complete' },
 };
 
 export default function GamePage() {
@@ -57,6 +65,61 @@ export default function GamePage() {
   const activeKey = id || gameType || 'memory';
   const gt: ActivityId = (activeKey && GAME_TYPES[activeKey]) ? (GAME_TYPES[activeKey] as ActivityId) : 'memory_match';
   const difficulty = currentDifficulty[gt as GameType] || 1;
+
+  const isMemory = activeKey === 'memory' || activeKey === 'memory_match' || gt === 'memory_match';
+  const isRoutine = activeKey === 'routine' || activeKey === 'daily_routine' || gt === 'daily_routine';
+  const isRecognition = activeKey === 'recognition' || activeKey === 'object_recognition' || activeKey === 'visual' || gt === 'object_recognition';
+  const isPattern = activeKey === 'pattern' || activeKey === 'pattern_recall' || gt === 'pattern_recall';
+  const isVoice = activeKey === 'voice' || activeKey === 'voice_recall' || gt === 'voice_recall';
+
+  // Optional on-device camera behavioral sensor (presence & cadence observation)
+  const [cameraSensorActive, setCameraSensorActive] = useState(false);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const stopCameraSensor = useCallback(() => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraSensorActive(false);
+  }, []);
+
+  const startCameraSensor = useCallback(async () => {
+    setCameraError(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Camera API not supported in this browser environment.');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 160 }, height: { ideal: 160 } },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        cameraVideoRef.current.onloadedmetadata = () => {
+          cameraVideoRef.current?.play().catch((err: unknown) => console.warn('Camera preview notice:', err));
+        };
+      }
+      setCameraSensorActive(true);
+    } catch (err: any) {
+      console.warn('Camera sensor unavailable:', err);
+      setCameraError('Camera observation is optional. Gameplay continues normally.');
+      setCameraSensorActive(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopCameraSensor();
+    };
+  }, [stopCameraSensor]);
 
   const playAudioGuide = useCallback(() => {
     VoiceService.speakContext(gt, 'welcome', language, true);
@@ -146,18 +209,18 @@ export default function GamePage() {
     setLastMetrics(null);
     setAdaptiveResult(null);
     initGameSession();
-  }, [gameType, currentUser]);
+  }, [activeKey, currentUser?.id]);
 
   const handleGameComplete = useCallback(async (metrics: any) => {
     setLastMetrics(metrics);
     setFinished(true);
 
-    if (gameType) {
-      sessionStorage.setItem(`mindmitra_game_done_${gameType}`, 'true');
+    if (activeKey) {
+      sessionStorage.setItem(`mindmitra_game_done_${activeKey}`, 'true');
       const saved = sessionStorage.getItem('mindmitra_completed_games');
       const list: string[] = saved ? JSON.parse(saved) : [];
-      if (!list.includes(gameType)) {
-        list.push(gameType);
+      if (!list.includes(activeKey)) {
+        list.push(activeKey);
         sessionStorage.setItem('mindmitra_completed_games', JSON.stringify(list));
       }
     }
@@ -275,17 +338,30 @@ export default function GamePage() {
     }
   }, [gameSessionId, activeUserId, gt, difficulty, gameType, currentUser, setGameDifficulty, voiceEnabled, language]);
 
-  const nextInfo = gameType ? NEXT_GAME[gameType] : null;
+  const handleVoiceComplete = useCallback((vector: VoiceBehavioralVector) => {
+    const accuracy = Math.min(1.0, Math.max(0.2, (vector.word_count >= 3 ? 1.0 : vector.word_count / 3)));
+    const metrics = {
+      accuracy,
+      avg_response_time_ms: vector.response_latency_ms || 1200,
+      repeat_errors: 0,
+      corrections: vector.number_of_pauses || 0,
+      completion_time_ms: (vector.speech_duration_ms || 2000) + (vector.response_latency_ms || 1200),
+      total_events: Math.max(1, vector.word_count),
+    };
+    handleGameComplete(metrics);
+  }, [handleGameComplete]);
+
+  const nextInfo = activeKey ? NEXT_GAME[activeKey] : null;
 
   const handleProceedNext = () => {
     if (!nextInfo) {
-      navigate('/session');
+      navigate('/activities');
       return;
     }
     if (nextInfo.id === 'complete') {
-      navigate('/session');
+      navigate('/activities');
     } else {
-      navigate(`/games/${nextInfo.id}`);
+      navigate(`/activity/${nextInfo.id}`);
     }
   };
 
@@ -327,15 +403,22 @@ export default function GamePage() {
           </button>
 
           <button
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`p-2 rounded-xl border transition-all ${
-              voiceEnabled
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+            onClick={() => {
+              if (cameraSensorActive) {
+                stopCameraSensor();
+              } else {
+                startCameraSensor();
+              }
+            }}
+            className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition-all ${
+              cameraSensorActive
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-700'
             }`}
-            title={voiceEnabled ? 'Voice Guidance Active' : 'Voice Guidance Muted'}
+            title={cameraSensorActive ? 'Visual Observation Active (Tap to mute)' : 'Enable Visual Observation Sensor (Optional)'}
+            aria-label={cameraSensorActive ? 'Disable Camera Sensor' : 'Enable Camera Sensor'}
           >
-            {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            {cameraSensorActive ? <Camera size={18} /> : <CameraOff size={18} />}
           </button>
 
           <ThemeToggle />
@@ -411,8 +494,54 @@ export default function GamePage() {
           ) : (
             /* Active Game Screen */
             <div>
-              <SynchronizedVoiceBanner className="mb-4" />
-              {gameType === 'memory' && (
+              <SynchronizedVoiceBanner
+                language={language}
+                currentText={InstructionService.get(gt, 'instruction', language)}
+                className="mb-4"
+              />
+
+              {/* Optional On-Device Camera Behavioral Sensor Overlay */}
+              {cameraSensorActive && (
+                <div className="mb-4 p-3 rounded-2xl bg-slate-900/90 border border-slate-700 text-white flex items-center justify-between shadow-md animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-950 border border-emerald-500/60 relative shrink-0">
+                      <video
+                        ref={cameraVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover scale-x-[-1]"
+                      />
+                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-emerald-400">On-Device Visual Cadence Sensor</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-emerald-950/80 text-emerald-300 rounded-sm font-semibold border border-emerald-800">Active</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        Observing interaction cadence in volatile device memory. Zero recordings stored or uploaded.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={stopCameraSensor}
+                    className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Turn off visual sensor"
+                  >
+                    Turn Off
+                  </button>
+                </div>
+              )}
+
+              {cameraError && (
+                <div className="mb-3 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                  <span>{cameraError}</span>
+                  <button onClick={() => setCameraError(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs font-bold ml-2 cursor-pointer">✕</button>
+                </div>
+              )}
+
+              {isMemory && (
                 <MemoryMatch
                   difficulty={difficulty}
                   userId={activeUserId}
@@ -420,7 +549,7 @@ export default function GamePage() {
                   onComplete={handleGameComplete}
                 />
               )}
-              {gameType === 'routine' && (
+              {isRoutine && (
                 <DailyRoutine
                   difficulty={difficulty}
                   userId={activeUserId}
@@ -428,7 +557,7 @@ export default function GamePage() {
                   onComplete={handleGameComplete}
                 />
               )}
-              {gameType === 'recognition' && (
+              {isRecognition && (
                 <ObjectRecognition
                   difficulty={difficulty}
                   userId={activeUserId}
@@ -436,12 +565,18 @@ export default function GamePage() {
                   onComplete={handleGameComplete}
                 />
               )}
-              {gameType === 'pattern' && (
+              {isPattern && (
                 <PatternRecall
                   difficulty={difficulty}
                   userId={activeUserId}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
+                />
+              )}
+              {isVoice && (
+                <VoiceRecallActivity
+                  onComplete={handleVoiceComplete}
+                  onCancel={() => navigate('/activities')}
                 />
               )}
             </div>

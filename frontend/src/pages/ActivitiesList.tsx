@@ -65,6 +65,15 @@ export default function ActivitiesList() {
       icon: '✨',
       telemetryNote: 'Measures pattern response tempo, tap cadence variance, and error recovery rate.',
     },
+    {
+      id: 'voice',
+      gameType: 'voice_recall',
+      title: 'Voice Recall',
+      domain: 'Verbal Memory',
+      description: 'Respond verbally to gentle everyday prompts to observe speech latency, response cadence, and natural pauses.',
+      icon: '🎙️',
+      telemetryNote: 'Measures speech reaction latency, verbal duration, and pauses via local speech API. Zero audio stored.',
+    },
   ];
 
   const handleSpeakInstruction = (title: string, desc: string) => {

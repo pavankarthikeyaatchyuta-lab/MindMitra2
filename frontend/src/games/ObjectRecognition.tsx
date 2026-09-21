@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
-import { CheckCircle2, XCircle, ShieldCheck, Info, User, Eye } from 'lucide-react';
+import { CheckCircle2, XCircle, ShieldCheck, Info, User, Eye, Camera, Image as ImageIcon } from 'lucide-react';
 import { api } from '../services/api';
 import { FamiliarPerson } from '../types';
 import { VoiceService } from '../services/voiceService';
+import CameraRecallActivity from '../components/CameraRecallActivity';
 
 export interface GameMetrics {
   accuracy: number;
@@ -133,6 +134,8 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [familiarStatus, setFamiliarStatus] = useState<string | null>(null);
+  const [cameraMode, setCameraMode] = useState(false);
+  const [familiarList, setFamiliarList] = useState<FamiliarPerson[]>([]);
 
   const idleTimerRef = useRef<any>(null);
 
@@ -172,6 +175,7 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     }
 
     const consented = familiarPeople.filter(p => p.consent_confirmed && p.photo_url);
+    setFamiliarList(consented);
 
     const baseQuestions: QuestionItem[] = difficulty === 1
       ? [...LEVEL_1_QUESTIONS]
@@ -292,6 +296,44 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     });
   };
 
+  const handleCameraComplete = (matchSuccess: boolean, latencyMs: number, _recallType?: 'self_confirmed' | 'assisted') => {
+    stats.current.responseTimes.push(latencyMs);
+    if (matchSuccess) {
+      stats.current.correctAnswers++;
+      VoiceService.speakContext('object_recognition', 'success', language, false);
+    } else {
+      stats.current.errors++;
+      VoiceService.speakContext('object_recognition', 'incorrect', language, false);
+    }
+    setCameraMode(false);
+    advanceQuestion();
+  };
+
+  if (cameraMode) {
+    return (
+      <div className="flex flex-col items-center max-w-3xl mx-auto py-2">
+        <div className="w-full mb-3 flex justify-between items-center px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Live Visual Recall Camera Mode</span>
+          </div>
+          <button
+            onClick={() => setCameraMode(false)}
+            className="elderly-btn-secondary py-1.5 px-3.5 text-xs font-bold flex items-center gap-1.5 rounded-xl"
+          >
+            <ImageIcon size={14} />
+            <span>Switch to Photo Quiz</span>
+          </button>
+        </div>
+        <CameraRecallActivity
+          familiarPeopleList={familiarList}
+          onComplete={handleCameraComplete}
+          onCancel={() => setCameraMode(false)}
+        />
+      </div>
+    );
+  }
+
   if (questions.length === 0) {
     return (
       <div className="card p-12 text-center text-slate-700 dark:text-slate-400">
@@ -318,8 +360,20 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
           </p>
         </div>
 
-        <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm">
-          {currentIndex + 1} / {questions.length}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCameraMode(true)}
+            type="button"
+            className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors cursor-pointer"
+            title="Switch to live camera recall observation"
+          >
+            <Camera size={14} />
+            <span className="hidden sm:inline">Live Camera Mode</span>
+            <span className="sm:hidden">Camera</span>
+          </button>
+          <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm">
+            {currentIndex + 1} / {questions.length}
+          </div>
         </div>
       </div>
 

@@ -269,4 +269,4 @@ export interface ThreeDomainOverview {
 }
 
 export type Language = 'en' | 'hi' | 'te';
-export type GameType = 'memory_match' | 'daily_routine' | 'object_recognition' | 'pattern_recall';
+export type GameType = 'memory_match' | 'daily_routine' | 'object_recognition' | 'pattern_recall' | 'voice_recall';

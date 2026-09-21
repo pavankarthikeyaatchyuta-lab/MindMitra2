@@ -33,6 +33,7 @@ const defaultDifficulty: Record<GameType, number> = {
   daily_routine: 1,
   object_recognition: 1,
   pattern_recall: 1,
+  voice_recall: 1,
 };
 
 const AppContext = createContext<AppContextType>({
@@ -71,6 +72,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Validate session on mount if token exists
   useEffect(() => {
     async function validateAuth() {
+      const savedUserStr = localStorage.getItem('mindmitra_current_user');
+      if (savedUserStr) {
+        try {
+          const parsed = JSON.parse(savedUserStr);
+          if (parsed.preferred_language) {
+            localStorage.setItem('mindmitra_lang', parsed.preferred_language);
+            window.dispatchEvent(new CustomEvent('mindmitra_language_change', { detail: { language: parsed.preferred_language } }));
+          }
+        } catch {}
+      }
+
       const token = localStorage.getItem('mindmitra_token');
       if (token) {
         try {

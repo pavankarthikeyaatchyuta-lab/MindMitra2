@@ -15,7 +15,8 @@ export type ActivityId =
   | 'daily_routine'
   | 'object_recognition'
   | 'pattern_recall'
-  | 'visual_recall';
+  | 'visual_recall'
+  | 'voice_recall';
 
 export interface ActivityInstructionSet {
   name: Record<Language, string>;
@@ -267,6 +268,54 @@ export const ACTIVITY_INSTRUCTIONS: Record<ActivityId, ActivityInstructionSet> =
       en: 'Visual observation complete. Your natural pacing has been recorded.',
       te: 'దృశ్య పరిశీలన పూర్తయింది. మీ సహజ వేగం నమోదైంది.',
       hi: 'दृश्य अवलोकन पूरा हुआ। आपकी स्वाभाविक गति रिकॉर्ड हो गई।',
+    },
+  },
+
+  voice_recall: {
+    name: {
+      en: 'Voice Recall',
+      te: 'వాయిస్ రీకాల్',
+      hi: 'आवाज़ स्मरण',
+    },
+    welcome: {
+      en: 'Listen to the prompt and respond clearly in your natural voice.',
+      te: 'ప్రశ్నను విని మీ సహజ స్వరంతో స్పష్టంగా సమాధానం చెప్పండి.',
+      hi: 'प्रश्न सुनें और अपनी स्वाभाविक आवाज़ में स्पष्ट उत्तर दें।',
+    },
+    start: {
+      en: 'Tap the microphone and speak whenever you are ready.',
+      te: 'మైక్రోఫోన్ నొక్కి మీరు సిద్ధంగా ఉన్నప్పుడు మాట్లాడండి.',
+      hi: 'माइक्रोफ़ोन टैप करें और जब आप तैयार हों तब बोलें।',
+    },
+    instruction: {
+      en: 'Speak naturally. We measure your comfortable response rhythm.',
+      te: 'సహజంగా మాట్లాడండి. మీ ప్రతిస్పందన వేగాన్ని మేము గమనిస్తాము.',
+      hi: 'स्वाभाविक रूप से बोलें। हम आपकी सहज प्रतिक्रिया गति को मापते हैं।',
+    },
+    success: {
+      en: 'Wonderful! Your spoken response has been recorded.',
+      te: 'చాలా బాగుంది! మీ సమాధానం నమోదయింది.',
+      hi: 'बहुत अच्छा! आपकी प्रतिक्रिया दर्ज कर ली गई है।',
+    },
+    incorrect: {
+      en: 'Could not hear clearly. Feel free to speak again.',
+      te: 'స్పష్టంగా వినబడలేదు. మళ్ళీ మాట్లాడవచ్చు.',
+      hi: 'स्पष्ट सुनाई नहीं दिया। कृपया पुनः बोलें।',
+    },
+    help: {
+      en: 'Tap the microphone icon to start speaking.',
+      te: 'మాట్లాడటం ప్రారంభించడానికి మైక్రోఫోన్ గుర్తును నొక్కండి.',
+      hi: 'बोलना शुरू करने के लिए माइक आइकॉन टैप करें।',
+    },
+    idle: {
+      en: 'Whenever you are ready, tap the microphone to respond.',
+      te: 'మీరు సిద్ధంగా ఉన్నప్పుడు సమాధానం ఇవ్వడానికి మైక్రోఫోన్ నొక్కండి.',
+      hi: 'जब भी आप तैयार हों, उत्तर देने के लिए माइक टैप करें।',
+    },
+    completion: {
+      en: 'Great job completing your voice recall session.',
+      te: 'వాయిస్ రీకాల్ సెషన్‌ను విజయవంతంగా పూర్తి చేసినందుకు అభినందనలు.',
+      hi: 'आवाज़ सत्र सफलतापूर्वक पूरा करने के लिए बधाई।',
     },
   },
 };

@@ -347,11 +347,42 @@ export default function CaregiverPersonDetail() {
               <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">Age</span>
               <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{person?.age ? `${person.age} years` : 'Elder'}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">Language Preference</span>
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                {person?.preferred_language === 'te' ? 'Telugu' : person?.preferred_language === 'hi' ? 'Hindi' : 'English'}
-              </span>
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Language Preference</span>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { code: 'en', label: 'EN' },
+                  { code: 'te', label: 'తెలుగు' },
+                  { code: 'hi', label: 'हिन्दी' },
+                ].map((l) => {
+                  const isSelected = (person?.preferred_language || 'te') === l.code;
+                  return (
+                    <button
+                      key={l.code}
+                      type="button"
+                      onClick={async () => {
+                        if (!personId) return;
+                        try {
+                          await api.updateProfile(personId, { preferred_language: l.code });
+                          setPerson(prev => prev ? { ...prev, preferred_language: l.code } : null);
+                          if (currentUser && currentUser.id === personId) {
+                            switchProfile({ ...currentUser, preferred_language: l.code });
+                          }
+                        } catch (err) {
+                          console.warn('Could not update profile language preference:', err);
+                        }
+                      }}
+                      className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {l.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

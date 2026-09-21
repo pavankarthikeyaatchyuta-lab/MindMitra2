@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { CallProvider } from './context/CallContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './i18n';
 import { WifiOff } from 'lucide-react';
 
 // Public Pages
@@ -141,11 +142,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AppProvider>
-          <CallProvider>
-            <AppContent />
-          </CallProvider>
-        </AppProvider>
+        <LanguageProvider>
+          <AppProvider>
+            <CallProvider>
+              <AppContent />
+            </CallProvider>
+          </AppProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

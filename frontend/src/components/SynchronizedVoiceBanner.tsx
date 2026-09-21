@@ -30,9 +30,15 @@ export default function SynchronizedVoiceBanner({
 
   const activeLanguage: Language = language || voiceState.currentLanguage || 'en';
 
-  const displayText = voiceState.isSpeaking && voiceState.currentText
+  const fallbackTextByLang: Record<Language, string> = {
+    en: 'Listen to instructions and complete at your own pace.',
+    te: 'సూచనలను విని మీ స్వంత వేగంతో వ్యాయామాన్ని పూర్తి చేయండి.',
+    hi: 'निर्देश सुनें और अपनी स्वाभाविक गति से अभ्यास पूरा करें।',
+  };
+
+  const displayText = (voiceState.isSpeaking && voiceState.currentText && voiceState.currentLanguage === activeLanguage)
     ? voiceState.currentText
-    : (currentText || voiceState.currentText || 'Listen to instructions and complete at your own pace.');
+    : (currentText || (voiceState.currentLanguage === activeLanguage ? voiceState.currentText : '') || fallbackTextByLang[activeLanguage] || fallbackTextByLang.en);
 
   const handleListenAgain = () => {
     if (onListenAgain) {
