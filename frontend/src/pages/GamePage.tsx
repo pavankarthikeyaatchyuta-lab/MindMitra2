@@ -10,6 +10,9 @@ import DailyRoutine from '../games/DailyRoutine';
 import ObjectRecognition from '../games/ObjectRecognition';
 import PatternRecall from '../games/PatternRecall';
 import ThemeToggle from '../components/ThemeToggle';
+import SynchronizedVoiceBanner from '../components/SynchronizedVoiceBanner';
+import { InstructionService, ActivityId } from '../services/instructionService';
+import { VoiceService } from '../services/voiceService';
 import { ArrowLeft, Star, ChevronRight, Volume2, VolumeX, Sparkles, CheckCircle2, RotateCcw, Cpu, TrendingDown, TrendingUp, Laptop } from 'lucide-react';
 import { predictOnDevice } from '../services/onDeviceInference';
 import { PersonalBaselineEngine } from '../services/personalBaselineEngine';
@@ -17,47 +20,32 @@ import { OfficeKitBridge } from '../services/officeKitBridge';
 
 const GAME_TYPES: Record<string, GameType> = {
   memory: 'memory_match',
+  memory_match: 'memory_match',
   routine: 'daily_routine',
+  daily_routine: 'daily_routine',
   recognition: 'object_recognition',
+  object_recognition: 'object_recognition',
   pattern: 'pattern_recall',
+  pattern_recall: 'pattern_recall',
 };
 
 const NEXT_GAME: Record<string, { id: string; title: string }> = {
   memory: { id: 'routine', title: 'Daily Routine Recall' },
-  routine: { id: 'recognition', title: 'Object & Face Recognition' },
+  memory_match: { id: 'routine', title: 'Daily Routine Recall' },
+  routine: { id: 'recognition', title: 'Object & Visual Recall' },
+  daily_routine: { id: 'recognition', title: 'Object & Visual Recall' },
   recognition: { id: 'pattern', title: 'Pattern Recall' },
+  object_recognition: { id: 'pattern', title: 'Pattern Recall' },
   pattern: { id: 'complete', title: 'Session Complete' },
-};
-
-const AUDIO_GUIDE_INSTRUCTIONS: Record<GameType, Record<Language, string>> = {
-  memory_match: {
-    en: 'Find matching pairs of symbols by tapping the cards naturally.',
-    te: 'కార్డులను నొక్కడం ద్వారా సరిపోయే జంటలను కనుగొనండి.',
-    hi: 'कार्डों को छूकर मेल खाने वाले जोड़ों को खोजें।',
-  },
-  daily_routine: {
-    en: 'Arrange the routine cards in order from morning to evening.',
-    te: 'ఉదయం నుండి సాయంత్రం వరకు రోజువారీ కార్యకలాపాలను సరైన క్రమంలో అమర్చండి.',
-    hi: 'दिनचर्या के कार्डों को सुबह से शाम के सही क्रम में लगाएं।',
-  },
-  object_recognition: {
-    en: 'Look closely at the item and tap the matching label below.',
-    te: 'చిత్రాన్ని గమనించి, క్రింద ఉన్న సరైన పేరును ఎంచుకోండి.',
-    hi: 'वस्तु को ध्यान से देखें और नीचे सही नाम चुनें।',
-  },
-  pattern_recall: {
-    en: 'Remember the sequence of symbols and tap them in the same order.',
-    te: 'చిహ్నాల క్రమాన్ని గుర్తుంచుకొని, అదే క్రమంలో నొక్కండి.',
-    hi: 'प्रतीकों के क्रम को याद रखें और उसी क्रम में दोहराएं।',
-  },
+  pattern_recall: { id: 'complete', title: 'Session Complete' },
 };
 
 export default function GamePage() {
-  const { gameType } = useParams<{ gameType: string }>();
+  const { gameType, id } = useParams<{ gameType?: string; id?: string }>();
   const navigate = useNavigate();
   const { currentUser, switchProfile, currentSession, setCurrentSession, currentDifficulty, setGameDifficulty } = useApp();
   const { t, language } = useTranslation();
-  const { speak, stop, voiceEnabled, setVoiceEnabled } = useVoice();
+  const { voiceEnabled, setVoiceEnabled } = useVoice();
 
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
   const [activeUserId, setActiveUserId] = useState<number>(1);
@@ -66,24 +54,31 @@ export default function GamePage() {
   const [lastMetrics, setLastMetrics] = useState<any>(null);
   const [adaptiveResult, setAdaptiveResult] = useState<any>(null);
 
-  const gt = gameType ? GAME_TYPES[gameType] || 'memory_match' : 'memory_match';
-  const difficulty = currentDifficulty[gt] || 1;
+  const activeKey = id || gameType || 'memory';
+  const gt: ActivityId = (activeKey && GAME_TYPES[activeKey]) ? (GAME_TYPES[activeKey] as ActivityId) : 'memory_match';
+  const difficulty = currentDifficulty[gt as GameType] || 1;
 
   const playAudioGuide = useCallback(() => {
-    const guideText = AUDIO_GUIDE_INSTRUCTIONS[gt]?.[language] || AUDIO_GUIDE_INSTRUCTIONS[gt]?.en;
-    if (guideText) {
-      speak(guideText, language);
-    }
-  }, [gt, language, speak]);
+    VoiceService.speakContext(gt, 'welcome', language, true);
+  }, [gt, language]);
 
   useEffect(() => {
     if (!loading && !finished && voiceEnabled) {
       const timer = setTimeout(() => {
-        playAudioGuide();
+        VoiceService.speakContext(gt, 'welcome', language, false);
       }, 700);
       return () => clearTimeout(timer);
     }
-  }, [loading, finished, gt]);
+  }, [loading, finished, gt, language, voiceEnabled]);
+
+  useEffect(() => {
+    if (finished && voiceEnabled) {
+      const timer = setTimeout(() => {
+        VoiceService.speakContext(gt, 'completion', language, true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [finished, gt, language, voiceEnabled]);
 
   useEffect(() => {
     async function initGameSession() {
@@ -179,9 +174,6 @@ export default function GamePage() {
     }, difficulty);
 
     setAdaptiveResult(onDeviceRec);
-    if (onDeviceRec && onDeviceRec.recommended_difficulty) {
-      setGameDifficulty(gt, onDeviceRec.recommended_difficulty);
-    }
 
     // 2. Personal Baseline Comparison
     const sessionVec = {
@@ -195,6 +187,20 @@ export default function GamePage() {
     };
     const bEval = PersonalBaselineEngine.evaluateAgainstBaseline(activeUserId, sessionVec, gt);
     PersonalBaselineEngine.recordSession(activeUserId, sessionVec, gt);
+
+    // Single-mistake protection: Do not drop level if accuracy is respectable (>= 0.60)
+    // Only drop difficulty when persistent fatigue/struggle (< 0.60) or meaningful baseline deviation occurs
+    let nextDifficulty = difficulty;
+    if (onDeviceRec && onDeviceRec.recommendation === 'DECREASE') {
+      if (metrics.accuracy < 0.60 || bEval.status === 'MEANINGFUL_DEVIATION') {
+        nextDifficulty = onDeviceRec.recommended_difficulty;
+      }
+    } else if (onDeviceRec && onDeviceRec.recommendation === 'INCREASE') {
+      if (metrics.accuracy >= 0.80 && bEval.status !== 'MEANINGFUL_DEVIATION') {
+        nextDifficulty = onDeviceRec.recommended_difficulty;
+      }
+    }
+    setGameDifficulty(gt as GameType, nextDifficulty);
 
     // 3. Office Kit Bridge Broadcast
     OfficeKitBridge.publishSummary({
@@ -233,18 +239,27 @@ export default function GamePage() {
 
     // Spoken Audio Guide on Completion
     if (voiceEnabled) {
-      const completeText = language === 'te'
-        ? 'అద్భుతం! మీ కార్యాచరణ పూర్తయింది. ఫోన్ మీ స్థాయిని సర్దుబాటు చేసింది.'
-        : language === 'hi'
-        ? 'शानदार काम! आपकी गतिविधि पूरी हो गई है। फोन ने आपके स्तर को अनुकूलित किया है।'
-        : 'Wonderful work! Your activity is complete. The phone has adapted your difficulty.';
-      speak(completeText, language);
+      VoiceService.speakContext(gt, 'completion', language, true);
     }
+
+    // Save for SessionResult page
+    const sessionResultId = gameSessionId || Date.now();
+    sessionStorage.setItem('mindmitra_last_metrics', JSON.stringify({
+      ...metrics,
+      difficulty,
+      game_type: gt,
+      id: sessionResultId,
+    }));
+    sessionStorage.setItem('mindmitra_last_adaptive', JSON.stringify(onDeviceRec));
 
     // 4. Background Sync to Cloud Backend
     if (gameSessionId) {
       try {
-        await api.completeGameSession(gameSessionId, metrics);
+        await api.completeGameSession(gameSessionId, {
+          ...metrics,
+          user_id: activeUserId,
+          game_type: gt,
+        });
         await api.getAdaptiveRecommendation(activeUserId, gt, {
           accuracy: metrics.accuracy,
           mean_response_time_ms: metrics.avg_response_time_ms,
@@ -258,7 +273,7 @@ export default function GamePage() {
         console.log('Background cloud telemetry note:', e);
       }
     }
-  }, [gameSessionId, activeUserId, gt, difficulty, gameType, currentUser, setGameDifficulty, voiceEnabled, language, speak]);
+  }, [gameSessionId, activeUserId, gt, difficulty, gameType, currentUser, setGameDifficulty, voiceEnabled, language]);
 
   const nextInfo = gameType ? NEXT_GAME[gameType] : null;
 
@@ -275,13 +290,7 @@ export default function GamePage() {
   };
 
   const getGameTitle = () => {
-    switch (gameType) {
-      case 'memory': return 'Memory Match';
-      case 'routine': return 'Daily Routine Recall';
-      case 'recognition': return 'Object & Face Recognition';
-      case 'pattern': return 'Pattern Recall';
-      default: return 'Cognitive Activity';
-    }
+    return InstructionService.getTitle(gt, language);
   };
 
   return (
@@ -391,10 +400,10 @@ export default function GamePage() {
                 </button>
 
                 <button
-                  onClick={handleProceedNext}
+                  onClick={() => navigate(`/session-result/${gameSessionId || 'latest'}`)}
                   className="elderly-btn-primary text-sm py-3 px-8 rounded-xl inline-flex items-center justify-center gap-2"
                 >
-                  <span>{nextInfo?.id === 'complete' ? 'Back to Session' : `Next: ${nextInfo?.title}`}</span>
+                  <span>View Behavioral Result</span>
                   <ChevronRight size={16} />
                 </button>
               </div>
@@ -402,6 +411,7 @@ export default function GamePage() {
           ) : (
             /* Active Game Screen */
             <div>
+              <SynchronizedVoiceBanner className="mb-4" />
               {gameType === 'memory' && (
                 <MemoryMatch
                   difficulty={difficulty}

@@ -149,56 +149,45 @@ async def explain_with_nemotron(trend_data: Dict[str, Any]) -> str:
             else:
                 raise RuntimeError(f"OpenRouter Nemotron API returned status {resp.status}")
 
-async def generate_caregiver_insight(trend_data: Dict[str, Any]) -> Dict[str, Any]:
+async def generate_caregiver_insight(trend_data: Dict[str, Any], use_cloud_ai: bool = False) -> Dict[str, Any]:
     """
-    Executes 3-tier explanation cascade:
-    1. If insufficient history -> deterministic baseline rule immediately (no LLM call)
-    2. Gemini (Primary)
-    3. Nemotron (Fallback)
-    4. Deterministic template (Final Fallback)
+    Offline-First Behavioral Explanation Cascade:
+    1. Deterministic Local Template (Default - 100% offline, guaranteed instant & safe)
+    2. Local Ollama Gemma 3 4B (Optional on-device LLM if active)
+    3. Gemini 2.0 Flash (Optional cloud enhancement only if explicitly requested and key present)
     """
     status = trend_data.get("status", "stable")
     sessions_used = trend_data.get("sessions_used", 0)
     total_recorded = trend_data.get("total_recorded", 0)
 
-    if status in ["insufficient_history", "no_history"] or (sessions_used < 3 and total_recorded < 3):
+    # If insufficient history or cloud AI is disabled (default): use deterministic template
+    if not use_cloud_ai or status in ["insufficient_history", "no_history"] or (sessions_used < 3 and total_recorded < 3):
         explanation = generate_deterministic_explanation(trend_data)
         return {
             "explanation": explanation,
-            "provider": "deterministic_baseline_engine",
-            "tier": 3,
-            "disclaimer": MEDICAL_DISCLAIMER,
-        }
-
-    # 1. Try Gemini
-    try:
-        explanation = await explain_with_gemini(trend_data)
-        return {
-            "explanation": explanation,
-            "provider": "gemini-2.0-flash",
+            "provider": "deterministic_local_template",
             "tier": 1,
             "disclaimer": MEDICAL_DISCLAIMER,
         }
-    except Exception as gemini_err:
-        pass
 
-    # 2. Try Nemotron via OpenRouter
-    try:
-        explanation = await explain_with_nemotron(trend_data)
-        return {
-            "explanation": explanation,
-            "provider": "nemotron-via-openrouter",
-            "tier": 2,
-            "disclaimer": MEDICAL_DISCLAIMER,
-        }
-    except Exception as nemotron_err:
-        pass
+    # Optional Cloud AI (Gemini) if explicitly requested
+    if GEMINI_API_KEY:
+        try:
+            explanation = await explain_with_gemini(trend_data)
+            return {
+                "explanation": explanation,
+                "provider": "gemini-2.0-flash",
+                "tier": 2,
+                "disclaimer": MEDICAL_DISCLAIMER,
+            }
+        except Exception as e:
+            pass
 
-    # 3. Deterministic Template Fallback
+    # Final fallback: Deterministic Local Template
     explanation = generate_deterministic_explanation(trend_data)
     return {
         "explanation": explanation,
-        "provider": "deterministic_template",
-        "tier": 3,
+        "provider": "deterministic_local_template",
+        "tier": 1,
         "disclaimer": MEDICAL_DISCLAIMER,
     }

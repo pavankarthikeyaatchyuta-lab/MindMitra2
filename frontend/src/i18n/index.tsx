@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { en } from './en';
 import { hi } from './hi';
 import { te } from './te';
@@ -43,9 +43,26 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>(
     (localStorage.getItem('mindmitra_lang') as Language) || 'en'
   );
+  
+  useEffect(() => {
+    const handleLangChange = (evt: any) => {
+      const newLang = evt.detail?.language || localStorage.getItem('mindmitra_lang');
+      if (newLang && (newLang === 'en' || newLang === 'hi' || newLang === 'te')) {
+        setLanguage(newLang);
+      }
+    };
+    window.addEventListener('mindmitra_language_change', handleLangChange);
+    window.addEventListener('storage', handleLangChange);
+    return () => {
+      window.removeEventListener('mindmitra_language_change', handleLangChange);
+      window.removeEventListener('storage', handleLangChange);
+    };
+  }, []);
+
   const handleSetLanguage = (lang: Language) => {
     localStorage.setItem('mindmitra_lang', lang);
     setLanguage(lang);
+    window.dispatchEvent(new CustomEvent('mindmitra_language_change', { detail: { language: lang } }));
   };
 
   const t = createT(translations[language] || en);

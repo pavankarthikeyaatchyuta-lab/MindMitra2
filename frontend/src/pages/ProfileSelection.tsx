@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Plus, Brain, ArrowRight, ShieldCheck, MoreVertical, Edit2, Archive, Trash2, RotateCcw, Download, Search, Volume2, Globe, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../i18n';
 import { api } from '../services/api';
 import CaregiverAccountMenu from '../components/CaregiverAccountMenu';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function ProfileSelection() {
   const navigate = useNavigate();
-  const { caregiver, currentUser, switchProfile } = useApp();
+  const { caregiver, currentUser, switchProfile, updateUserProfile } = useApp();
+  const { setLanguage } = useTranslation();
   
   const [activeProfiles, setActiveProfiles] = useState<any[]>([]);
   const [archivedProfiles, setArchivedProfiles] = useState<any[]>([]);
@@ -57,6 +59,9 @@ export default function ProfileSelection() {
 
   const handleSelectProfile = (profile: any) => {
     switchProfile(profile);
+    if (profile.preferred_language) {
+      setLanguage(profile.preferred_language);
+    }
     navigate('/caregiver');
   };
 
@@ -74,6 +79,7 @@ export default function ProfileSelection() {
 
       setShowAddModal(false);
       setFormName('');
+      setLanguage(formLanguage);
       showToast(`${created.name} added successfully.`);
       await loadAllProfiles();
       switchProfile(created);
@@ -97,14 +103,16 @@ export default function ProfileSelection() {
     if (!editingProfile || !formName.trim()) return;
 
     try {
-      await api.updateProfile(editingProfile.id, {
+      await updateUserProfile(editingProfile.id, {
         name: formName.trim(),
         age: Number(formAge) || 70,
         preferred_language: formLanguage,
         voice_enabled: formVoice,
       });
+      setLanguage(formLanguage);
       setEditingProfile(null);
-      showToast('Profile details updated.');
+      const langLabel = formLanguage === 'te' ? 'తెలుగు (Telugu)' : formLanguage === 'hi' ? 'हिन्दी (Hindi)' : 'English';
+      showToast(`Profile updated. Voice language set to ${langLabel}.`);
       await loadAllProfiles();
     } catch {
       showToast('Failed to update profile.');

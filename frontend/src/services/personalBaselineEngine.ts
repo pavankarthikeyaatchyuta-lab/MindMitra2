@@ -57,9 +57,40 @@ export class PersonalBaselineEngine {
     try {
       const key = `${HISTORY_KEY_PREFIX}${userId}_${domain}`;
       const saved = localStorage.getItem(key);
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
+      let list: SessionEvidenceVector[] = [];
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) list = parsed;
+        } catch {}
+      }
+
+      // If querying 'overall' and specific overall list is empty, search across all domains for this user
+      if (domain === 'overall' && list.length === 0) {
+        const seen = new Set<string>();
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(`${HISTORY_KEY_PREFIX}${userId}_`)) {
+            const val = localStorage.getItem(k);
+            if (val) {
+              try {
+                const arr = JSON.parse(val);
+                if (Array.isArray(arr)) {
+                  arr.forEach(item => {
+                    const idKey = item.timestamp + '_' + (item.accuracy || 0);
+                    if (!seen.has(idKey)) {
+                      seen.add(idKey);
+                      list.push(item);
+                    }
+                  });
+                }
+              } catch {}
+            }
+          }
+        }
+        list.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      }
+      return list;
     } catch {
       return [];
     }
@@ -289,41 +320,46 @@ export class PersonalBaselineEngine {
    * Pre-seeds baseline history for demonstration profiles (e.g. Rajesh Kumar vs Sunita Devi).
    */
   public static seedDemonstrationBaselines(rajeshId: number, sunitaId: number): void {
-    // Rajesh Kumar: Stable Baseline (~88% accuracy, 2.0s latency, 1 correction)
-    const rajeshHistory: SessionEvidenceVector[] = [
-      { accuracy: 0.88, mean_response_time_ms: 2100, corrections: 1, repeat_errors: 0, completion_time_ms: 28000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 175, timestamp: '2026-09-08T10:00:00Z' },
-      { accuracy: 0.90, mean_response_time_ms: 1950, corrections: 0, repeat_errors: 0, completion_time_ms: 26000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 180, timestamp: '2026-09-09T10:00:00Z' },
-      { accuracy: 0.85, mean_response_time_ms: 2200, corrections: 1, repeat_errors: 1, completion_time_ms: 30000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 190, timestamp: '2026-09-10T10:00:00Z' },
-      { accuracy: 0.92, mean_response_time_ms: 1850, corrections: 0, repeat_errors: 0, completion_time_ms: 25000, difficulty: 4, hesitation_count: 0, mean_hold_duration_ms: 170, timestamp: '2026-09-11T10:00:00Z' },
-      { accuracy: 0.87, mean_response_time_ms: 2050, corrections: 1, repeat_errors: 0, completion_time_ms: 29000, difficulty: 4, hesitation_count: 0, mean_hold_duration_ms: 185, timestamp: '2026-09-12T10:00:00Z' },
-      { accuracy: 0.89, mean_response_time_ms: 2000, corrections: 1, repeat_errors: 0, completion_time_ms: 27000, difficulty: 4, hesitation_count: 0, mean_hold_duration_ms: 175, timestamp: '2026-09-13T10:00:00Z' },
-    ];
-    localStorage.setItem(`${HISTORY_KEY_PREFIX}${rajeshId}_overall`, JSON.stringify(rajeshHistory));
+    const existingRajesh = localStorage.getItem(`${HISTORY_KEY_PREFIX}${rajeshId}_overall`);
+    const existingSunita = localStorage.getItem(`${HISTORY_KEY_PREFIX}${sunitaId}_overall`);
 
-    // Sunita Devi: Baseline (~84% accuracy, 2.1s latency, 2 corrections)
-    const sunitaHistory: SessionEvidenceVector[] = [
-      { accuracy: 0.85, mean_response_time_ms: 2150, corrections: 2, repeat_errors: 1, completion_time_ms: 32000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 210, timestamp: '2026-09-08T11:00:00Z' },
-      { accuracy: 0.86, mean_response_time_ms: 2050, corrections: 1, repeat_errors: 0, completion_time_ms: 31000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 205, timestamp: '2026-09-09T11:00:00Z' },
-      { accuracy: 0.83, mean_response_time_ms: 2200, corrections: 2, repeat_errors: 1, completion_time_ms: 33000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 220, timestamp: '2026-09-10T11:00:00Z' },
-      { accuracy: 0.84, mean_response_time_ms: 2100, corrections: 2, repeat_errors: 0, completion_time_ms: 32000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 215, timestamp: '2026-09-11T11:00:00Z' },
-      { accuracy: 0.82, mean_response_time_ms: 2300, corrections: 2, repeat_errors: 1, completion_time_ms: 34000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 225, timestamp: '2026-09-12T11:00:00Z' },
-    ];
-    localStorage.setItem(`${HISTORY_KEY_PREFIX}${sunitaId}_overall`, JSON.stringify(sunitaHistory));
+    // Only seed Rajesh if no history exists
+    if (!existingRajesh) {
+      const rajeshHistory: SessionEvidenceVector[] = [
+        { accuracy: 0.88, mean_response_time_ms: 2100, corrections: 1, repeat_errors: 0, completion_time_ms: 28000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 175, timestamp: '2026-09-08T10:00:00Z' },
+        { accuracy: 0.90, mean_response_time_ms: 1950, corrections: 0, repeat_errors: 0, completion_time_ms: 26000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 180, timestamp: '2026-09-09T10:00:00Z' },
+        { accuracy: 0.85, mean_response_time_ms: 2200, corrections: 1, repeat_errors: 1, completion_time_ms: 30000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 190, timestamp: '2026-09-10T10:00:00Z' },
+        { accuracy: 0.92, mean_response_time_ms: 1850, corrections: 0, repeat_errors: 0, completion_time_ms: 25000, difficulty: 4, hesitation_count: 0, mean_hold_duration_ms: 170, timestamp: '2026-09-11T10:00:00Z' },
+        { accuracy: 0.87, mean_response_time_ms: 2050, corrections: 1, repeat_errors: 0, completion_time_ms: 29000, difficulty: 4, hesitation_count: 0, mean_hold_duration_ms: 185, timestamp: '2026-09-12T10:00:00Z' },
+        { accuracy: 0.89, mean_response_time_ms: 2000, corrections: 1, repeat_errors: 0, completion_time_ms: 27000, difficulty: 4, hesitation_count: 0, mean_hold_duration_ms: 175, timestamp: '2026-09-13T10:00:00Z' },
+      ];
+      localStorage.setItem(`${HISTORY_KEY_PREFIX}${rajeshId}_overall`, JSON.stringify(rajeshHistory));
+      rajeshHistory.forEach(s => {
+        PersonalMemoryDB.recordSession({
+          userId: rajeshId,
+          domain: 'overall',
+          ...s,
+        }).catch(() => {});
+      });
+    }
 
-    // Also sync to PersonalMemoryDB in background
-    rajeshHistory.forEach(s => {
-      PersonalMemoryDB.recordSession({
-        userId: rajeshId,
-        domain: 'overall',
-        ...s,
-      }).catch(() => {});
-    });
-    sunitaHistory.forEach(s => {
-      PersonalMemoryDB.recordSession({
-        userId: sunitaId,
-        domain: 'overall',
-        ...s,
-      }).catch(() => {});
-    });
+    // Only seed Sunita if no history exists
+    if (!existingSunita) {
+      const sunitaHistory: SessionEvidenceVector[] = [
+        { accuracy: 0.85, mean_response_time_ms: 2150, corrections: 2, repeat_errors: 1, completion_time_ms: 32000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 210, timestamp: '2026-09-08T11:00:00Z' },
+        { accuracy: 0.86, mean_response_time_ms: 2050, corrections: 1, repeat_errors: 0, completion_time_ms: 31000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 205, timestamp: '2026-09-09T11:00:00Z' },
+        { accuracy: 0.83, mean_response_time_ms: 2200, corrections: 2, repeat_errors: 1, completion_time_ms: 33000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 220, timestamp: '2026-09-10T11:00:00Z' },
+        { accuracy: 0.84, mean_response_time_ms: 2100, corrections: 2, repeat_errors: 0, completion_time_ms: 32000, difficulty: 3, hesitation_count: 0, mean_hold_duration_ms: 215, timestamp: '2026-09-11T11:00:00Z' },
+        { accuracy: 0.82, mean_response_time_ms: 2300, corrections: 2, repeat_errors: 1, completion_time_ms: 34000, difficulty: 3, hesitation_count: 1, mean_hold_duration_ms: 225, timestamp: '2026-09-12T11:00:00Z' },
+      ];
+      localStorage.setItem(`${HISTORY_KEY_PREFIX}${sunitaId}_overall`, JSON.stringify(sunitaHistory));
+      sunitaHistory.forEach(s => {
+        PersonalMemoryDB.recordSession({
+          userId: sunitaId,
+          domain: 'overall',
+          ...s,
+        }).catch(() => {});
+      });
+    }
   }
 }

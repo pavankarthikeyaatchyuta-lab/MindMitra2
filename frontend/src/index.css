@@ -100,19 +100,19 @@ body {
   border-color: rgba(99, 102, 241, 0.4);
 }
 
-/* Elderly-friendly large accessible buttons */
+/* Elderly-friendly accessible buttons & touch targets */
 .elderly-btn-primary {
-  min-height: 54px;
-  min-width: 170px;
-  font-size: 1.15rem;
+  min-height: 52px;
+  min-width: 160px;
+  font-size: 1.1rem;
   font-weight: 700;
   border-radius: 0.875rem;
-  padding: 0.75rem 1.75rem;
-  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 50%, #0891b2 100%);
+  padding: 0.85rem 1.75rem;
+  background-color: var(--accent);
   color: #ffffff;
   border: none;
-  box-shadow: 0 4px 14px 0 rgba(124, 58, 237, 0.25);
-  transition: opacity 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px 0 rgba(37, 99, 235, 0.2);
+  transition: background-color 0.15s ease, transform 0.1s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -120,8 +120,7 @@ body {
 }
 
 .elderly-btn-primary:hover {
-  opacity: 0.95;
-  box-shadow: 0 6px 20px 0 rgba(124, 58, 237, 0.35);
+  background-color: var(--accent-hover);
   transform: translateY(-1px);
 }
 
@@ -130,15 +129,15 @@ body {
 }
 
 .elderly-btn-secondary {
-  min-height: 54px;
-  min-width: 170px;
-  font-size: 1.15rem;
+  min-height: 52px;
+  min-width: 160px;
+  font-size: 1.1rem;
   font-weight: 600;
   border-radius: 0.875rem;
-  padding: 0.75rem 1.75rem;
+  padding: 0.85rem 1.75rem;
   background-color: var(--bg-card);
   color: var(--text-primary);
-  border: 1.5px solid rgba(99, 102, 241, 0.35);
+  border: 2px solid var(--border);
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -147,8 +146,14 @@ body {
 }
 
 .elderly-btn-secondary:hover {
-  background-color: rgba(238, 242, 255, 0.6);
-  border-color: #6366f1;
+  background-color: var(--bg-card-hover);
+  border-color: var(--accent);
+}
+
+/* Touch targets guarantee */
+.touch-target-48 {
+  min-width: 48px;
+  min-height: 48px;
 }
 
 /* Focus outline for accessibility */

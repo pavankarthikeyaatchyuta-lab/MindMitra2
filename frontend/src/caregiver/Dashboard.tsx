@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [overallTrend, setOverallTrend] = useState<OverallTrend | null>(null);
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
+  const [sessionsCount, setSessionsCount] = useState<number>(0);
   const [familiarPeople, setFamiliarPeople] = useState<FamiliarPerson[]>([]);
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,14 +78,16 @@ export default function Dashboard() {
     async function loadData() {
       setLoading(true);
       try {
-        const [t, gs, fp] = await Promise.all([
+        const [t, gs, fp, sList] = await Promise.all([
           api.getTrends(selectedUserId!),
           api.getUserGameSessions(selectedUserId!),
           api.getFamiliarPeople(selectedUserId!),
+          api.getUserSessions(selectedUserId!),
         ]);
         setTrends(t);
         setGameSessions(gs);
         setFamiliarPeople(fp);
+        setSessionsCount(sList ? sList.length : gs.length);
 
         try {
           const data = await api.getOverallTrend(selectedUserId!);
@@ -206,14 +209,6 @@ export default function Dashboard() {
             <Sparkles size={14} className="text-amber-500" />
             <span>Today's Session</span>
           </Link>
-          <Link to="/community" className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs flex items-center gap-1.5 font-bold">
-            <Users size={14} />
-            <span>Community Mode</span>
-          </Link>
-          <Link to="/connect" className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5 font-bold">
-            <Heart size={14} />
-            <span>Connect Mode</span>
-          </Link>
           <Link to="/caregiver/trends" className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all font-bold">
             Trends & Adaptive AI
           </Link>
@@ -222,9 +217,6 @@ export default function Dashboard() {
           </Link>
           <Link to="/caregiver/people" className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all font-bold">
             Familiar People
-          </Link>
-          <Link to="/caregiver/reminders" className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all font-bold">
-            Reminders
           </Link>
           <Link to="/caregiver/history" className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all font-bold">
             Session History
@@ -306,7 +298,7 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-3">
               <span className="text-xs px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-black">
-                {gameSessions.length} Recorded Sessions
+                {sessionsCount} Recorded Sessions
               </span>
               <button
                 onClick={handleStartSession}

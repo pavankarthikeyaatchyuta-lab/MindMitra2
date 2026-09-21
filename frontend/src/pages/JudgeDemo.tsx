@@ -31,6 +31,7 @@ export default function JudgeDemo() {
   const [selectedScenario, setSelectedScenario] = useState<'A' | 'B' | null>(null);
   const [executing, setExecuting] = useState(false);
   const [stepIndex, setStepIndex] = useState<number>(0);
+  const [demoLanguage, setDemoLanguage] = useState<'en' | 'te' | 'hi'>('en');
 
   // Real pipeline outputs
   const [features, setFeatures] = useState<OnDeviceFeatures | null>(null);
@@ -38,6 +39,56 @@ export default function JudgeDemo() {
   const [baselineMetrics, setBaselineMetrics] = useState<PersonalBaselineMetrics | null>(null);
   const [officeKitPacket, setOfficeKitPacket] = useState<OfficeKitPacket | null>(null);
   const [explanation, setExplanation] = useState<BehavioralExplanationResult | null>(null);
+
+  const generateExplanation = (
+    scenario: 'A' | 'B',
+    lang: 'en' | 'te' | 'hi',
+    bMet: PersonalBaselineMetrics,
+    feat: OnDeviceFeatures,
+    mlRes: OnDeviceInferenceResult,
+    corrections: number
+  ) => {
+    return LocalTemplateExplanationProvider.generate({
+      profileName: scenario === 'A' ? 'Rajesh Kumar' : 'Sunita Devi',
+      language: lang,
+      baseline: {
+        medianAccuracy: bMet.baselineMedianAccuracy,
+        medianLatencyMs: bMet.baselineMedianLatencyMs,
+        medianCorrections: bMet.baselineMedianCorrections,
+        eligibleSessionCount: bMet.eligibleSessionCount,
+        status: bMet.status,
+      },
+      session: {
+        accuracy: feat.accuracy,
+        latencyMs: feat.mean_response_time_ms,
+        corrections,
+        hesitationCount: scenario === 'B' ? 5 : 0,
+        activityType: 'TOUCH MEMORY MATCH',
+      },
+      adaptation: {
+        previousDifficulty: scenario === 'A' ? 3 : 4,
+        recommendedDifficulty: mlRes.recommended_difficulty,
+        decision: scenario === 'A' ? mlRes.recommendation : 'DECREASE',
+        reason: mlRes.reason,
+      },
+    });
+  };
+
+  const handleLanguageChange = (lang: 'en' | 'te' | 'hi') => {
+    setDemoLanguage(lang);
+    if (selectedScenario && baselineMetrics && features && inferenceResult) {
+      const corr = selectedScenario === 'A' ? 1 : 4;
+      const updated = generateExplanation(
+        selectedScenario,
+        lang,
+        baselineMetrics,
+        features,
+        inferenceResult,
+        corr
+      );
+      setExplanation(updated);
+    }
+  };
 
   // Scenario A: Normal Interaction (Rajesh Kumar)
   const runScenarioA = async () => {
@@ -134,28 +185,7 @@ export default function JudgeDemo() {
     setOfficeKitPacket(pkt);
 
     // Natural-language behavioral explanation
-    const expA = LocalTemplateExplanationProvider.generate({
-      profileName: 'Rajesh Kumar',
-      baseline: {
-        medianAccuracy: bMet.baselineMedianAccuracy,
-        medianLatencyMs: bMet.baselineMedianLatencyMs,
-        medianCorrections: bMet.baselineMedianCorrections,
-        eligibleSessionCount: bMet.eligibleSessionCount,
-        status: bMet.status,
-      },
-      session: {
-        accuracy: featA.accuracy,
-        latencyMs: featA.mean_response_time_ms,
-        corrections: sessionVec.corrections,
-        activityType: 'TOUCH MEMORY MATCH',
-      },
-      adaptation: {
-        previousDifficulty: 3,
-        recommendedDifficulty: mlRes.recommended_difficulty,
-        decision: mlRes.recommendation,
-        reason: mlRes.reason,
-      },
-    });
+    const expA = generateExplanation('A', demoLanguage, bMet, featA, mlRes, sessionVec.corrections);
     setExplanation(expA);
 
     setExecuting(false);
@@ -256,29 +286,7 @@ export default function JudgeDemo() {
     setOfficeKitPacket(pkt);
 
     // Natural-language behavioral explanation
-    const expB = LocalTemplateExplanationProvider.generate({
-      profileName: 'Sunita Devi',
-      baseline: {
-        medianAccuracy: bMet.baselineMedianAccuracy,
-        medianLatencyMs: bMet.baselineMedianLatencyMs,
-        medianCorrections: bMet.baselineMedianCorrections,
-        eligibleSessionCount: bMet.eligibleSessionCount,
-        status: bMet.status,
-      },
-      session: {
-        accuracy: featB.accuracy,
-        latencyMs: featB.mean_response_time_ms,
-        corrections: sessionVec.corrections,
-        hesitationCount: 5,
-        activityType: 'TOUCH MEMORY MATCH',
-      },
-      adaptation: {
-        previousDifficulty: 4,
-        recommendedDifficulty: 2,
-        decision: 'DECREASE',
-        reason: mlRes.reason,
-      },
-    });
+    const expB = generateExplanation('B', demoLanguage, bMet, featB, mlRes, sessionVec.corrections);
     setExplanation(expB);
 
     setExecuting(false);
@@ -338,6 +346,22 @@ export default function JudgeDemo() {
               <Smartphone size={15} />
               <span>Open Phone UI</span>
             </Link>
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-xs">
+              {(['en', 'te', 'hi'] as const).map(lng => (
+                <button
+                  key={lng}
+                  onClick={() => handleLanguageChange(lng)}
+                  className={`px-2.5 py-1.5 rounded-xl font-black transition-all text-xs min-h-[36px] ${
+                    demoLanguage === lng
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white'
+                  }`}
+                  title={`View explanations in ${lng === 'en' ? 'English' : lng === 'te' ? 'Telugu' : 'Hindi'}`}
+                >
+                  {lng === 'en' ? 'EN' : lng === 'te' ? 'తెలుగు' : 'हिन्दी'}
+                </button>
+              ))}
+            </div>
             <ThemeToggle />
           </div>
         </div>

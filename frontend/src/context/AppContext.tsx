@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, Caregiver, Session, GameType } from '../types';
 import { api } from '../services/api';
 import { clearAllCaches } from '../services/storage';
+import { PersonalMemoryDB } from '../services/personalMemoryDB';
 
 export interface AuthResult {
   success: boolean;
@@ -24,6 +25,7 @@ interface AppContextType {
   login: (email: string, password: string) => Promise<AuthResult>;
   register: (name: string, email: string, password: string) => Promise<AuthResult>;
   logout: () => void;
+  updateUserProfile: (userId: number, updates: Partial<User>) => Promise<User>;
 }
 
 const defaultDifficulty: Record<GameType, number> = {
@@ -48,6 +50,7 @@ const AppContext = createContext<AppContextType>({
   login: async () => ({ success: false }),
   register: async () => ({ success: false }),
   logout: () => {},
+  updateUserProfile: async () => ({} as User),
 });
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -105,10 +108,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('mindmitra_current_user', JSON.stringify(profile));
       if (profile.preferred_language) {
         localStorage.setItem('mindmitra_lang', profile.preferred_language);
+        window.dispatchEvent(new CustomEvent('mindmitra_language_change', { detail: { language: profile.preferred_language } }));
       }
     } else {
       localStorage.removeItem('mindmitra_current_user');
     }
+  };
+
+  const updateUserProfile = async (userId: number, updates: Partial<User>): Promise<User> => {
+    const updated = await api.updateProfile(userId, updates);
+    if (currentUser && currentUser.id === userId) {
+      const merged = { ...currentUser, ...updated };
+      setCurrentUser(merged);
+      localStorage.setItem('mindmitra_current_user', JSON.stringify(merged));
+      if (merged.preferred_language) {
+        localStorage.setItem('mindmitra_lang', merged.preferred_language);
+        window.dispatchEvent(new CustomEvent('mindmitra_language_change', { detail: { language: merged.preferred_language } }));
+      }
+    }
+    return updated;
   };
 
   const login = async (email: string, password: string): Promise<AuthResult> => {
@@ -237,6 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      updateUserProfile,
     }}>
       {children}
     </AppContext.Provider>

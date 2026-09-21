@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '../i18n';
+import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
   accuracy: number;
@@ -41,12 +42,14 @@ interface Card {
 }
 
 export default function MemoryMatch({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+
+  const idleTimerRef = useRef<any>(null);
 
   const stats = useRef({
     flips: 0,
@@ -62,6 +65,21 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   });
 
   const pairCount = getPairCount(difficulty);
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      if (!stats.current.completed) {
+        VoiceService.speakContext('memory_match', 'idle', language, false);
+      }
+    }, 14000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     initGame();
@@ -106,11 +124,13 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
       seenCards: new Set<string>(),
       completed: false
     };
+    resetIdleTimer();
   };
 
   const handleCardClick = (idx: number) => {
     if (isLocked || cards[idx].isFlipped || cards[idx].isMatched) return;
 
+    resetIdleTimer();
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
     stats.current.responseTimes.push(rt);
@@ -132,6 +152,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
 
       if (firstCard.emoji === secondCard.emoji) {
         stats.current.matches++;
+        VoiceService.speakContext('memory_match', 'success', language, false);
         setTimeout(() => {
           setCards(prev => prev.map((c, i) => (i === firstIdx || i === secondIdx ? { ...c, isMatched: true } : c)));
           setFlippedIndices([]);
@@ -143,6 +164,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
         }, 500);
       } else {
         stats.current.errors++;
+        VoiceService.speakContext('memory_match', 'incorrect', language, false);
         const cardKey = [firstCard.emoji, secondCard.emoji].sort().join('-');
         if (stats.current.seenCards.has(cardKey)) {
           stats.current.repeatErrors++;
@@ -160,6 +182,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   };
 
   const finishGame = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (stats.current.completed) return;
     stats.current.completed = true;
     setIsComplete(true);

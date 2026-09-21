@@ -397,12 +397,26 @@ def get_current_caregiver(authorization: Optional[str] = Header(None)) -> Option
     token = authorization.replace("Bearer ", "").strip()
     return decode_access_token(token)
 
+def check_caregiver_profile_access(conn, current: Optional[Dict[str, Any]], profile_id: int):
+    """
+    Verifies that if current user is authenticated, the requested profile_id belongs to that user/caregiver.
+    Raises HTTPException(403) if access is forbidden.
+    """
+    if not current:
+        return
+    caregiver_id = current.get("caregiver_id")
+    if caregiver_id and not verify_profile_ownership(conn, caregiver_id, profile_id):
+        raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+
 # --- MODELS ---
 
 class CaregiverRegister(BaseModel):
     name: str
     email: str
     password: str
+    preferred_language: str = "en"
+    age: Optional[int] = None
+    auto_create_profile: bool = False
 
 class CaregiverLogin(BaseModel):
     email: str
@@ -518,10 +532,37 @@ def register_caregiver(req: CaregiverRegister):
             INSERT INTO caregivers (name, email, password_hash, created_at, updated_at, active)
             VALUES (?, ?, ?, ?, ?, TRUE)
         """, (name, email, pwd_hash, now, now))
-        conn.commit()
         caregiver_id = c.lastrowid
 
         token = create_access_token(caregiver_id, email, name)
+        
+        # If client explicitly requests initial profile creation upon register
+        profile_data = None
+        if getattr(req, "auto_create_profile", False):
+            lang = getattr(req, "preferred_language", "en") or "en"
+            age = getattr(req, "age", 70) or 70
+            c.execute("""
+                INSERT INTO elderly_profiles (caregiver_id, name, age, preferred_language, voice_enabled, created_at, updated_at, active, status)
+                VALUES (?, ?, ?, ?, TRUE, ?, ?, TRUE, 'active')
+            """, (caregiver_id, name, age, lang, now, now))
+            profile_id = c.lastrowid
+
+            # Sync to users table for backward compat
+            c.execute("""
+                INSERT INTO users (id, display_name, age, preferred_language, voice_enabled, created_at)
+                VALUES (?, ?, ?, ?, TRUE, ?)
+            """, (profile_id, name, age, lang, now))
+            profile_data = {
+                "id": profile_id,
+                "name": name,
+                "display_name": name,
+                "age": age,
+                "preferred_language": lang,
+                "voice_enabled": True,
+            }
+
+        conn.commit()
+
         logger.info(f"[Auth] Caregiver registered successfully: id={caregiver_id}, email={email}")
         return {
             "token": token,
@@ -529,7 +570,8 @@ def register_caregiver(req: CaregiverRegister):
                 "id": caregiver_id,
                 "name": name,
                 "email": email,
-            }
+            },
+            "profile": profile_data
         }
 
 @app.post("/api/auth/login")
@@ -567,14 +609,14 @@ def login_caregiver(req: CaregiverLogin):
 @app.get("/api/auth/me")
 def get_current_user_profile(current=Depends(get_current_caregiver)):
     if not current:
-        current = {"caregiver_id": 1, "email": "pavan@mindmitra.com", "name": "Pavan Kumar"}
+        raise HTTPException(status_code=401, detail="Authentication required")
 
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT id, name, email, created_at FROM caregivers WHERE id = ?", (current["caregiver_id"],))
         cg = c.fetchone()
         if not cg:
-            cg = {"id": 1, "name": current["name"], "email": current["email"]}
+            raise HTTPException(status_code=404, detail="Caregiver account not found")
 
         # Get active profiles for this caregiver
         c.execute("""
@@ -864,6 +906,7 @@ def get_user_legacy(id: int):
 @app.post("/sessions/start")
 def start_session(s: SessionStart, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, s.user_id)
         c = conn.cursor()
         now_dt = datetime.datetime.now()
         now = now_dt.isoformat()
@@ -887,29 +930,49 @@ def start_session(s: SessionStart, current=Depends(get_current_caregiver)):
         return {"id": c.lastrowid, "user_id": s.user_id, "started_at": now, "status": "active"}
 
 @app.post("/api/sessions/{id}/complete")
-def complete_session(id: int):
+def complete_session(id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
         c = conn.cursor()
+        c.execute("SELECT user_id FROM sessions WHERE id = ?", (id,))
+        row = c.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        check_caregiver_profile_access(conn, current, row["user_id"])
         now = datetime.datetime.now().isoformat()
         c.execute("UPDATE sessions SET completed_at = ?, status = 'completed' WHERE id = ?", (now, id))
         conn.commit()
         return {"id": id, "completed_at": now, "status": "completed"}
 
-@app.get("/api/sessions/user/{user_id}")
-def list_user_sessions(user_id: int):
+@app.get("/api/sessions/canonical-count/{user_id}")
+def get_canonical_session_count(user_id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, user_id)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) as cnt FROM sessions WHERE user_id = ?", (user_id,))
+        row = c.fetchone()
+        count = row["cnt"] if row else 0
+        c.execute("SELECT COUNT(*) as g_cnt FROM game_sessions WHERE user_id = ?", (user_id,))
+        g_row = c.fetchone()
+        game_count = g_row["g_cnt"] if g_row else 0
+        return {"user_id": user_id, "session_count": count, "game_session_count": game_count}
+
+@app.get("/api/sessions/user/{user_id}")
+def list_user_sessions(user_id: int, current=Depends(get_current_caregiver)):
+    with get_db() as conn:
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("SELECT * FROM sessions WHERE user_id = ? ORDER BY id DESC", (user_id,))
         return [dict(row) for row in c.fetchall()]
 
 @app.get("/api/sessions/{id}")
-def get_session(id: int):
+def get_session(id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM sessions WHERE id = ?", (id,))
         session = c.fetchone()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+        check_caregiver_profile_access(conn, current, session["user_id"])
         c.execute("SELECT * FROM game_sessions WHERE session_id = ?", (id,))
         game_sessions = [dict(row) for row in c.fetchall()]
         return {**dict(session), "game_sessions": game_sessions}
@@ -1575,8 +1638,9 @@ def get_3domain_overview(user_id: int, current=Depends(get_current_caregiver)):
 # --- ENDPOINTS: GAMES ---
 
 @app.post("/api/games/session/start")
-def start_game_session(gs: GameSessionStart):
+def start_game_session(gs: GameSessionStart, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, gs.user_id)
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
         c.execute(
@@ -1587,10 +1651,14 @@ def start_game_session(gs: GameSessionStart):
         return {"id": c.lastrowid, **gs.dict(), "started_at": now}
 
 @app.post("/api/games/session/{id}/complete")
-def complete_game_session(id: int, data: GameSessionComplete):
+def complete_game_session(id: int, data: GameSessionComplete, current=Depends(get_current_caregiver)):
     with get_db() as conn:
         try:
             c = conn.cursor()
+            c.execute("SELECT user_id FROM game_sessions WHERE id = ?", (id,))
+            gs_row = c.fetchone()
+            if gs_row:
+                check_caregiver_profile_access(conn, current, gs_row["user_id"])
             now = datetime.datetime.now().isoformat()
 
             session_dict = {
@@ -1622,8 +1690,9 @@ def complete_game_session(id: int, data: GameSessionComplete):
             raise HTTPException(status_code=500, detail=f"Failed to complete game session: {e}")
 
 @app.post("/api/games/event")
-def record_game_event(evt: GameEventRecord):
+def record_game_event(evt: GameEventRecord, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, evt.user_id)
         c = conn.cursor()
         c.execute(
             "INSERT INTO game_events (game_session_id, user_id, event_type, event_data_json, timestamp) VALUES (?, ?, ?, ?, ?)",
@@ -1633,15 +1702,17 @@ def record_game_event(evt: GameEventRecord):
         return {"status": "recorded"}
 
 @app.get("/api/games/sessions/user/{user_id}")
-def get_user_game_sessions(user_id: int):
+def get_user_game_sessions(user_id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("SELECT * FROM game_sessions WHERE user_id = ? ORDER BY id ASC", (user_id,))
         return [dict(row) for row in c.fetchall()]
 
 @app.get("/api/games/sessions/user/{user_id}/{game_type}")
-def get_user_game_sessions_by_type(user_id: int, game_type: str):
+def get_user_game_sessions_by_type(user_id: int, game_type: str, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("SELECT * FROM game_sessions WHERE user_id = ? AND game_type = ? ORDER BY id ASC", (user_id, game_type))
         return [dict(row) for row in c.fetchall()]
@@ -1649,7 +1720,9 @@ def get_user_game_sessions_by_type(user_id: int, game_type: str):
 # --- ENDPOINTS: ADAPTIVE AI ---
 
 @app.post("/api/adaptive/recommend")
-def adaptive_recommend(req: AdaptiveRecommendRequest):
+def adaptive_recommend(req: AdaptiveRecommendRequest, current=Depends(get_current_caregiver)):
+    with get_db() as conn:
+        check_caregiver_profile_access(conn, current, req.user_id)
     result = recommend_next_difficulty(
         user_id=req.user_id,
         game_type=req.game_type,
@@ -1675,8 +1748,9 @@ def adaptive_recommend(req: AdaptiveRecommendRequest):
     return result
 
 @app.get("/api/adaptive/history/{user_id}")
-def get_adaptive_history(user_id: int):
+def get_adaptive_history(user_id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("SELECT * FROM adaptive_decisions WHERE user_id = ? ORDER BY id DESC", (user_id,))
         return [dict(row) for row in c.fetchall()]
@@ -1684,8 +1758,9 @@ def get_adaptive_history(user_id: int):
 # --- ENDPOINTS: LONGITUDINAL TREND ENGINE & BASELINE ---
 
 @app.get("/api/analytics/baseline/{user_id}/{game_type}")
-def get_baseline(user_id: int, game_type: str):
+def get_baseline(user_id: int, game_type: str, current=Depends(get_current_caregiver)):
     with get_db() as conn:
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("""
             SELECT g.* FROM game_sessions g

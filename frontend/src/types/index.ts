@@ -15,6 +15,7 @@ export interface User {
   voice_enabled: boolean;
   relationship?: string;
   is_archived?: boolean;
+  is_demo?: boolean;
   created_at: string;
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import { CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
+import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
   accuracy: number;
@@ -65,13 +66,15 @@ const ROUTINES = [
 ];
 
 export default function DailyRoutine({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   
   const [stage, setStage] = useState<'memorize' | 'recall'>('memorize');
   const [targetSequence, setTargetSequence] = useState<RoutineItem[]>([]);
   const [poolItems, setPoolItems] = useState<RoutineItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<RoutineItem[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+
+  const idleTimerRef = useRef<any>(null);
 
   const stats = useRef({
     correctPlacements: 0,
@@ -84,6 +87,21 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   });
 
   const itemCount = Math.min(6, difficulty + 2);
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      if (!stats.current.completed) {
+        VoiceService.speakContext('daily_routine', 'idle', language, false);
+      }
+    }, 14000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     initGame();
@@ -118,6 +136,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   const handleStartRecall = () => {
     setStage('recall');
     stats.current.lastActionTime = Date.now();
+    resetIdleTimer();
   };
 
   const [wrongItemId, setWrongItemId] = useState<string | null>(null);
@@ -128,6 +147,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     setClickDebounce(true);
     setTimeout(() => setClickDebounce(false), 400);
 
+    resetIdleTimer();
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
     stats.current.responseTimes.push(rt);
@@ -138,6 +158,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     if (item.originalIndex === nextIndex) {
       setWrongItemId(null);
       stats.current.correctPlacements++;
+      VoiceService.speakContext('daily_routine', 'success', language, false);
       const newSelected = [...selectedItems, item];
       setSelectedItems(newSelected);
       setPoolItems(prev => prev.filter(p => p.id !== item.id));
@@ -147,6 +168,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
       }
     } else {
       stats.current.errors++;
+      VoiceService.speakContext('daily_routine', 'incorrect', language, false);
       setWrongItemId(item.id);
       setTimeout(() => setWrongItemId(null), 1200);
     }
@@ -161,6 +183,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   };
 
   const finishGame = (finalSequence: RoutineItem[]) => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (stats.current.completed) return;
     stats.current.completed = true;
     setIsComplete(true);

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
-import { CheckCircle2, XCircle, ShieldCheck, Info } from 'lucide-react';
+import { CheckCircle2, XCircle, ShieldCheck, Info, User, Eye } from 'lucide-react';
 import { api } from '../services/api';
 import { FamiliarPerson } from '../types';
+import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
   accuracy: number;
@@ -21,6 +22,12 @@ export interface GameProps {
   onComplete: (metrics: GameMetrics) => void;
 }
 
+interface Option {
+  id: string;
+  display: string;
+  isCorrect: boolean;
+}
+
 interface QuestionItem {
   id: string;
   type: 'object' | 'person';
@@ -28,11 +35,7 @@ interface QuestionItem {
   targetEmojiOrPhoto: string;
   isPhotoUrl?: boolean;
   personId?: number;
-  options: {
-    id: string;
-    display: string;
-    isCorrect: boolean;
-  }[];
+  options: Option[];
 }
 
 const LEVEL_1_QUESTIONS: QuestionItem[] = [
@@ -42,31 +45,31 @@ const LEVEL_1_QUESTIONS: QuestionItem[] = [
     question: 'Which one is the Apple?',
     targetEmojiOrPhoto: '🍎',
     options: [
-      { id: '1a', display: '🍎', isCorrect: true },
-      { id: '1b', display: '🪑', isCorrect: false },
-      { id: '1c', display: '⏰', isCorrect: false },
+      { id: '1a', display: '🍌', isCorrect: false },
+      { id: '1b', display: '🍎', isCorrect: true },
+      { id: '1c', display: '🍇', isCorrect: false },
     ]
   },
   {
     id: 'obj-2',
     type: 'object',
-    question: 'Which one is the Chair?',
-    targetEmojiOrPhoto: '🪑',
+    question: 'Which one is the Tea Cup?',
+    targetEmojiOrPhoto: '🍵',
     options: [
-      { id: '2a', display: '☕', isCorrect: false },
-      { id: '2b', display: '🪑', isCorrect: true },
-      { id: '2c', display: '🍌', isCorrect: false },
+      { id: '2a', display: '🍵', isCorrect: true },
+      { id: '2b', display: '🥣', isCorrect: false },
+      { id: '2c', display: '🍶', isCorrect: false },
     ]
   },
   {
     id: 'obj-3',
     type: 'object',
-    question: 'Which one is the Cup of Tea?',
-    targetEmojiOrPhoto: '☕',
+    question: 'Which one is the Car?',
+    targetEmojiOrPhoto: '🚗',
     options: [
-      { id: '3a', display: '🕯️', isCorrect: false },
-      { id: '3b', display: '👓', isCorrect: false },
-      { id: '3c', display: '☕', isCorrect: true },
+      { id: '3a', display: '🚲', isCorrect: false },
+      { id: '3b', display: '🚌', isCorrect: false },
+      { id: '3c', display: '🚗', isCorrect: true },
     ]
   }
 ];
@@ -75,7 +78,7 @@ const LEVEL_2_QUESTIONS: QuestionItem[] = [
   {
     id: 'obj-4',
     type: 'object',
-    question: 'Which one is the Apple?',
+    question: 'Which item is the Red Apple?',
     targetEmojiOrPhoto: '🍎',
     options: [
       { id: '4a', display: '🍅', isCorrect: false },
@@ -123,13 +126,15 @@ const LEVEL_2_QUESTIONS: QuestionItem[] = [
 ];
 
 export default function ObjectRecognition({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [familiarStatus, setFamiliarStatus] = useState<string | null>(null);
+
+  const idleTimerRef = useRef<any>(null);
 
   const stats = useRef({
     correctAnswers: 0,
@@ -140,6 +145,19 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     startTime: 0,
     lastActionTime: 0
   });
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      VoiceService.speakContext('object_recognition', 'idle', language, false);
+    }, 14000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     initQuestions();
@@ -161,17 +179,25 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
 
     if (consented.length >= 1) {
       setFamiliarStatus(null);
-      const targetPerson = consented[0];
-      const otherNames = ['Radha', 'Kiran', 'Suresh', 'Anita', 'Sunita', 'Rajesh'].filter(n => n !== targetPerson.name);
+      const targetPerson = consented[Math.floor(Math.random() * consented.length)];
+      const otherFamilyNames = consented.filter(p => p.id !== targetPerson.id).map(p => p.name);
+      const fallbackNames = ['Radha Sharma', 'Kiran Verma', 'Suresh Patel', 'Pooja Gupta', 'Deepak Rao'].filter(n => n !== targetPerson.name && !otherFamilyNames.includes(n));
+      const allDistractorNames = [...otherFamilyNames, ...fallbackNames];
 
-      const distractor1 = otherNames[0] || 'Friend';
-      const distractor2 = otherNames[1] || 'Neighbor';
-      const distractor3 = otherNames[2] || 'Cousin';
+      const distractor1 = allDistractorNames[0] || 'Friend';
+      const distractor2 = allDistractorNames[1] || 'Neighbor';
+      const distractor3 = allDistractorNames[2] || 'Cousin';
+
+      const localizedQuestion = language === 'te'
+        ? `ఈ ఫోటోలో ఉన్నది ఎవరు? (${targetPerson.relationship || 'కుటుంబ సభ్యులు'})`
+        : language === 'hi'
+        ? `इस तस्वीर में कौन हैं? (${targetPerson.relationship || 'परिवार के सदस्य'})`
+        : `Who is in this photo? (${targetPerson.relationship || 'Family Member'})`;
 
       const personQ: QuestionItem = {
         id: `person-${targetPerson.id}`,
         type: 'person',
-        question: 'Who is in this photo?',
+        question: localizedQuestion,
         targetEmojiOrPhoto: targetPerson.photo_url,
         isPhotoUrl: true,
         personId: targetPerson.id,
@@ -203,11 +229,13 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
       startTime: Date.now(),
       lastActionTime: Date.now()
     };
+    resetIdleTimer();
   };
 
-  const handleSelectOption = (option: { id: string; display: string; isCorrect: boolean }) => {
+  const handleSelectOption = (option: Option) => {
     if (isLocked) return;
 
+    resetIdleTimer();
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
     stats.current.responseTimes.push(rt);
@@ -218,10 +246,12 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
 
     if (option.isCorrect) {
       stats.current.correctAnswers++;
+      VoiceService.speakContext('object_recognition', 'success', language, false);
       setFeedback('correct');
       setTimeout(() => advanceQuestion(), 1200);
     } else {
       stats.current.errors++;
+      VoiceService.speakContext('object_recognition', 'incorrect', language, false);
       setFeedback('incorrect');
       setTimeout(() => advanceQuestion(), 1600);
     }
@@ -232,6 +262,7 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     setFeedback(null);
     setIsLocked(false);
     stats.current.lastActionTime = Date.now();
+    resetIdleTimer();
 
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex(prev => prev + 1);
@@ -241,6 +272,7 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
   };
 
   const finishGame = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     const now = Date.now();
     const totalTime = now - stats.current.startTime;
     const avgRt = stats.current.responseTimes.length > 0

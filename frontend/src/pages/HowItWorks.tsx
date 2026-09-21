@@ -101,8 +101,8 @@ export default function HowItWorks() {
               <p className="text-slate-600 dark:text-slate-400">Chronological re-ordering of everyday tasks (morning tea, medication, walking, dinner) evaluating logical procedural memory.</p>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-              <strong className="text-slate-900 dark:text-white text-sm block mb-1">3. Object & Face Recognition</strong>
-              <span className="text-blue-600 dark:text-blue-400 font-semibold block mb-1.5">Visual & Semantic Recognition</span>
+              <strong className="text-slate-900 dark:text-white text-sm block mb-1">3. Visual & Object Recall</strong>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold block mb-1.5">Visual & Semantic Recall</span>
               <p className="text-slate-600 dark:text-slate-400">Distinguishing household objects and recognizing caregiver-uploaded family member photos with verified consent.</p>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">

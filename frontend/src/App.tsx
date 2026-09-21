@@ -2,32 +2,26 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { CallProvider } from './context/CallContext';
-import { GlobalCallOverlay } from './components/GlobalCallOverlay';
 import { ThemeProvider } from './context/ThemeContext';
 import { WifiOff } from 'lucide-react';
 
-const Login = lazy(() => import('./pages/Login'));
-const ProfileSelection = lazy(() => import('./pages/ProfileSelection'));
+// Public Pages
 const Welcome = lazy(() => import('./pages/Welcome'));
-const HowItWorks = lazy(() => import('./pages/HowItWorks'));
-const Onboarding = lazy(() => import('./pages/Onboarding'));
-const Session = lazy(() => import('./pages/Session'));
+const Login = lazy(() => import('./pages/Login'));
+
+// Normal User Pages (Elder-First Responsive)
+const UserHome = lazy(() => import('./pages/UserHome'));
+const ActivitiesList = lazy(() => import('./pages/ActivitiesList'));
 const GamePage = lazy(() => import('./pages/GamePage'));
-const SessionComplete = lazy(() => import('./pages/SessionComplete'));
-const CaregiverDashboard = lazy(() => import('./caregiver/Dashboard'));
-const CaregiverTrends = lazy(() => import('./caregiver/Trends'));
-const CaregiverInsights = lazy(() => import('./caregiver/Insights'));
-const CaregiverFamiliarPeople = lazy(() => import('./caregiver/FamiliarPeople'));
-const CaregiverReminders = lazy(() => import('./caregiver/Reminders'));
-const CaregiverHistory = lazy(() => import('./caregiver/History'));
-const CommunityHub = lazy(() => import('./pages/CommunityHub'));
-const CommunitySessionRun = lazy(() => import('./pages/CommunitySessionRun'));
-const ConnectHub = lazy(() => import('./pages/ConnectHub'));
-const Methodology = lazy(() => import('./pages/Methodology'));
-const Demo = lazy(() => import('./pages/Demo'));
-const PersonalPatternExperience = lazy(() => import('./pages/PersonalPatternExperience'));
+const SessionResult = lazy(() => import('./pages/SessionResult'));
+const MyPattern = lazy(() => import('./pages/MyPattern'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+
+// Caregiver Workspace Pages
+const CaregiverOverview = lazy(() => import('./caregiver/CaregiverOverview'));
+const CaregiverPersonDetail = lazy(() => import('./caregiver/CaregiverPersonDetail'));
+const CaregiverPersonPattern = lazy(() => import('./caregiver/CaregiverPersonPattern'));
 const OfficeKitView = lazy(() => import('./caregiver/OfficeKitView'));
-const JudgeDemo = lazy(() => import('./pages/JudgeDemo'));
 
 const OfflineBanner = () => {
   const { isOnline } = useAppContext();
@@ -58,72 +52,80 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { caregiver } = useAppContext();
   if (caregiver) {
-    return <Navigate to="/profiles" replace />;
+    return <Navigate to="/home" replace />;
   }
   return <>{children}</>;
 };
 
 function AppContent() {
+  const { caregiver } = useAppContext();
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
       {/* Offline Status */}
       <OfflineBanner />
 
-      {/* Global Real-Time Call Overlay & Incoming Ring Banner */}
-      <GlobalCallOverlay />
-
       {/* Main Page Routing */}
       <main className="flex-grow flex flex-col">
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
-            {/* Public Routes */}
+            {/* ============================================================
+                PUBLIC ROUTES
+               ============================================================ */}
             <Route path="/" element={<Welcome />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-            <Route path="/signup" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-            <Route path="/methodology" element={<Methodology />} />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/judge-demo" element={<JudgeDemo />} />
-            <Route path="/personal-pattern" element={<PersonalPatternExperience />} />
-            <Route path="/office-kit" element={<OfficeKitView />} />
+            <Route path="/landing" element={<Welcome />} />
+            <Route path="/login" element={<PublicOnlyRoute><Login initialRegister={false} /></PublicOnlyRoute>} />
+            <Route path="/register" element={<PublicOnlyRoute><Login initialRegister={true} /></PublicOnlyRoute>} />
+            <Route path="/signup" element={<Navigate to="/register" replace />} />
 
-            {/* Authenticated Caregiver Hub */}
-            <Route path="/profiles" element={<ProtectedRoute><ProfileSelection /></ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            {/* ============================================================
+                NORMAL USER ROUTES (Phone-First)
+               ============================================================ */}
+            <Route path="/home" element={<ProtectedRoute><UserHome /></ProtectedRoute>} />
+            <Route path="/activities" element={<ProtectedRoute><ActivitiesList /></ProtectedRoute>} />
+            <Route path="/activity/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+            <Route path="/session-result/:id" element={<ProtectedRoute><SessionResult /></ProtectedRoute>} />
+            <Route path="/my-pattern" element={<ProtectedRoute><MyPattern /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
 
-            {/* Profile Workspace Routes */}
-            <Route path="/caregiver" element={<ProtectedRoute><CaregiverDashboard /></ProtectedRoute>} />
-            <Route path="/community" element={<ProtectedRoute><CommunityHub /></ProtectedRoute>} />
-            <Route path="/community/run" element={<ProtectedRoute><CommunitySessionRun /></ProtectedRoute>} />
-            <Route path="/connect" element={<ProtectedRoute><ConnectHub /></ProtectedRoute>} />
-            <Route path="/caregiver/trends" element={<ProtectedRoute><CaregiverTrends /></ProtectedRoute>} />
-            <Route path="/caregiver/insights" element={<ProtectedRoute><CaregiverInsights /></ProtectedRoute>} />
-            <Route path="/caregiver/people" element={<ProtectedRoute><CaregiverFamiliarPeople /></ProtectedRoute>} />
-            <Route path="/caregiver/reminders" element={<ProtectedRoute><CaregiverReminders /></ProtectedRoute>} />
-            <Route path="/caregiver/history" element={<ProtectedRoute><CaregiverHistory /></ProtectedRoute>} />
-
-            {/* Parametric Profile Workspace Routes */}
-            <Route path="/profiles/:profileId" element={<ProtectedRoute><CaregiverDashboard /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/overview" element={<ProtectedRoute><CaregiverDashboard /></ProtectedRoute>} />
-                        {/* Cognitive Session Routes */}
-            <Route path="/session" element={<ProtectedRoute><Session /></ProtectedRoute>} />
-            <Route path="/session/:sessionId" element={<ProtectedRoute><Session /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/session" element={<ProtectedRoute><Session /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/session/:sessionId" element={<ProtectedRoute><Session /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/trends" element={<ProtectedRoute><CaregiverTrends /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/insights" element={<ProtectedRoute><CaregiverInsights /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/people" element={<ProtectedRoute><CaregiverFamiliarPeople /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/reminders" element={<ProtectedRoute><CaregiverReminders /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/history" element={<ProtectedRoute><CaregiverHistory /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/community" element={<ProtectedRoute><CommunityHub /></ProtectedRoute>} />
-            <Route path="/profiles/:profileId/connect" element={<ProtectedRoute><ConnectHub /></ProtectedRoute>} />
-
-            {/* Games routes */}
+            {/* Games Route Backwards-Compatibility */}
             <Route path="/games/:gameType" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
-            <Route path="/session/complete" element={<ProtectedRoute><SessionComplete /></ProtectedRoute>} />
 
-            {/* Catch-all fallback to Home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* ============================================================
+                CAREGIVER ROUTES
+               ============================================================ */}
+            <Route path="/caregiver" element={<ProtectedRoute><CaregiverOverview /></ProtectedRoute>} />
+            <Route path="/caregiver/person/:id" element={<ProtectedRoute><CaregiverPersonDetail /></ProtectedRoute>} />
+            <Route path="/caregiver/person/:id/pattern" element={<ProtectedRoute><CaregiverPersonPattern /></ProtectedRoute>} />
+            <Route path="/caregiver/office-kit" element={<ProtectedRoute><OfficeKitView /></ProtectedRoute>} />
+
+            {/* ============================================================
+                LEGACY ROUTE REDIRECTS (Consolidated into strict IA)
+               ============================================================ */}
+            <Route path="/session" element={<Navigate to="/activities" replace />} />
+            <Route path="/session/complete" element={<Navigate to="/my-pattern" replace />} />
+            <Route path="/personal-pattern" element={<Navigate to="/my-pattern" replace />} />
+            <Route path="/profiles" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/profiles/:profileId" element={<Navigate to="/caregiver/person/:profileId" replace />} />
+            <Route path="/profiles/:profileId/overview" element={<Navigate to="/caregiver/person/:profileId" replace />} />
+            <Route path="/profiles/:profileId/trends" element={<Navigate to="/caregiver/person/:profileId/pattern" replace />} />
+            <Route path="/profiles/:profileId/insights" element={<Navigate to="/caregiver/person/:profileId/pattern" replace />} />
+            <Route path="/profiles/:profileId/people" element={<Navigate to="/caregiver/person/:profileId" replace />} />
+            <Route path="/profiles/:profileId/reminders" element={<Navigate to="/caregiver/person/:profileId" replace />} />
+            <Route path="/profiles/:profileId/history" element={<Navigate to="/caregiver/person/:profileId/pattern" replace />} />
+            <Route path="/caregiver/trends" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/caregiver/insights" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/caregiver/people" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/caregiver/reminders" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/caregiver/history" element={<Navigate to="/caregiver" replace />} />
+            <Route path="/office-kit" element={<Navigate to="/caregiver/office-kit" replace />} />
+            <Route path="/community" element={<Navigate to="/home" replace />} />
+            <Route path="/connect" element={<Navigate to="/home" replace />} />
+            <Route path="/how-it-works" element={<Navigate to="/landing" replace />} />
+            <Route path="/methodology" element={<Navigate to="/landing" replace />} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to={caregiver ? "/home" : "/landing"} replace />} />
           </Routes>
         </Suspense>
       </main>

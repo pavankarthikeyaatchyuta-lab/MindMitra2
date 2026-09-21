@@ -29,7 +29,7 @@ const ACTIVITIES = [
     id: 'recognition',
     type: 'object_recognition',
     title: 'Object & Familiar Person Recognition',
-    domain: 'Visual & Face Recognition',
+    domain: 'Visual & Familiar Person Recall',
     desc: 'Identify everyday household objects and caregiver-uploaded family photos.',
     icon: Search,
     emoji: '🔍',

@@ -38,9 +38,12 @@ import {
   BehavioralExplanationRequest 
 } from '../services/explanationProvider';
 import { OfficeKitBridge, OfficeKitPacket } from '../services/officeKitBridge';
-import { User } from '../types';
+import { User, FamiliarPerson } from '../types';
 import { useVoice } from '../hooks/useVoice';
 import { useTranslation } from '../i18n';
+import { InstructionService } from '../services/instructionService';
+import { VoiceService, VoiceState } from '../services/voiceService';
+import { PersonalMemoryDB } from '../services/personalMemoryDB';
 
 export default function PersonalPatternExperience() {
   const navigate = useNavigate();
@@ -57,6 +60,10 @@ export default function PersonalPatternExperience() {
   const [explanation, setExplanation] = useState<BehavioralExplanationResult | null>(null);
   const [showTimeline, setShowTimeline] = useState<boolean>(false);
   
+  // Familiar People for Camera Recall & Recognition
+  const [familiarPeople, setFamiliarPeople] = useState<FamiliarPerson[]>([]);
+  const [activeFamiliarPerson, setActiveFamiliarPerson] = useState<FamiliarPerson | null>(null);
+
   // Telemetry & Results
   const [touchVector, setTouchVector] = useState<TouchBehavioralVector | null>(null);
   const [voiceVector, setVoiceVector] = useState<VoiceBehavioralVector | null>(null);
@@ -66,7 +73,74 @@ export default function PersonalPatternExperience() {
 
   const touchTracker = useRef<TouchSensorTracker>(new TouchSensorTracker(3));
 
-  // Pre-seed demonstration baselines for Rajesh Kumar and Sunita Devi
+  const [history, setHistory] = useState<SessionEvidenceVector[]>([]);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(true);
+  const [voiceSubtitles, setVoiceSubtitles] = useState<string>('');
+
+  const loadFamiliarPeople = async (userId: number) => {
+    try {
+      const fam = await api.getFamiliarPeople(userId);
+      setFamiliarPeople(fam);
+      if (fam && fam.length > 0) {
+        setActiveFamiliarPerson(fam[0]);
+      } else {
+        setActiveFamiliarPerson(null);
+      }
+    } catch {
+      setFamiliarPeople([]);
+      setActiveFamiliarPerson(null);
+    }
+  };
+
+  const loadUserHistory = async (userId: number) => {
+    setHistoryLoading(true);
+    const syncList = PersonalBaselineEngine.getSessionHistory(userId, 'overall');
+    try {
+      const dbList = await PersonalMemoryDB.getSessionHistory(userId, 'overall');
+      const map = new Map<string, SessionEvidenceVector>();
+      syncList.forEach(s => map.set(s.timestamp + '_' + s.accuracy, s));
+      dbList.forEach(s => map.set(s.timestamp + '_' + s.accuracy, {
+        accuracy: s.accuracy,
+        mean_response_time_ms: s.mean_response_time_ms,
+        corrections: s.corrections,
+        repeat_errors: s.repeat_errors,
+        completion_time_ms: s.completion_time_ms,
+        difficulty: s.difficulty,
+        hesitation_count: s.telemetryDetails?.hesitationCount,
+        response_time_variance: s.telemetryDetails?.responseTimeVariance,
+        timestamp: s.timestamp,
+      }));
+
+      // Ingest backend game sessions if available for full consistency
+      try {
+        const backendGames = await api.getUserGameSessions(userId);
+        if (backendGames && backendGames.length > 0) {
+          backendGames.forEach(bg => {
+            const key = (bg.completed_at || bg.started_at) + '_' + (bg.accuracy || 0);
+            if (!map.has(key)) {
+              map.set(key, {
+                accuracy: bg.accuracy || 0.8,
+                mean_response_time_ms: bg.avg_response_time_ms || 2000,
+                corrections: bg.corrections || 0,
+                repeat_errors: bg.repeat_errors || 0,
+                completion_time_ms: bg.completion_time_ms || 25000,
+                difficulty: bg.difficulty || 2,
+                timestamp: bg.completed_at || bg.started_at,
+              });
+            }
+          });
+        }
+      } catch {}
+
+      const merged = Array.from(map.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      setHistory(merged);
+    } catch {
+      setHistory(syncList);
+    }
+    setHistoryLoading(false);
+  };
+
+  // Pre-seed demonstration baselines for Rajesh Kumar and Sunita Devi if empty
   useEffect(() => {
     async function load() {
       try {
@@ -76,10 +150,14 @@ export default function PersonalPatternExperience() {
           const active = currentUser || fetched[0];
           setSelectedUser(active);
           
-          // Pre-seed Rajesh (1) and Sunita (2) if not already seeded
-          const rajesh = fetched.find(p => p.name?.toLowerCase().includes('rajesh') || p.display_name?.toLowerCase().includes('rajesh')) || fetched[0];
-          const sunita = fetched.find(p => p.name?.toLowerCase().includes('sunita') || p.display_name?.toLowerCase().includes('sunita')) || (fetched.length > 1 ? fetched[1] : fetched[0]);
-          PersonalBaselineEngine.seedDemonstrationBaselines(rajesh.id, sunita.id);
+          const rajesh = fetched.find(p => (p.name?.toLowerCase().includes('rajesh') || p.display_name?.toLowerCase().includes('rajesh')) && (p as any).is_demo);
+          const sunita = fetched.find(p => (p.name?.toLowerCase().includes('sunita') || p.display_name?.toLowerCase().includes('sunita')) && (p as any).is_demo);
+          if (rajesh && sunita) {
+            PersonalBaselineEngine.seedDemonstrationBaselines(rajesh.id, sunita.id);
+          }
+
+          await loadUserHistory(active.id);
+          await loadFamiliarPeople(active.id);
         }
       } catch (err) {
         console.warn('Could not load profiles:', err);
@@ -88,23 +166,34 @@ export default function PersonalPatternExperience() {
     load();
   }, []);
 
+  // Listen to voice state for synchronized subtitle
+  useEffect(() => {
+    const unsub = VoiceService.subscribe(state => {
+      setVoiceSubtitles(state.isSpeaking ? state.currentText : '');
+    });
+    return unsub;
+  }, []);
+
   const activeUserId = selectedUser ? selectedUser.id : 1;
-  const history = PersonalBaselineEngine.getSessionHistory(activeUserId, 'overall');
-  const sessionCount = history.length + 1;
-  const baselineMedianAcc = history.length > 0
-    ? PersonalBaselineEngine.calculateMedian(history.map(s => s.accuracy))
-    : 0.88;
-  const baselineMedianLat = history.length > 0
-    ? PersonalBaselineEngine.calculateMedian(history.map(s => s.mean_response_time_ms))
-    : 2000;
-  const baselineMedianCorr = history.length > 0
-    ? PersonalBaselineEngine.calculateMedian(history.map(s => s.corrections))
-    : 1;
+  const sessionCount = history.length;
+  const isCalibrating = sessionCount < 3;
+  const baselineMedianAcc = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.accuracy)) : null;
+  const baselineMedianLat = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.mean_response_time_ms)) : null;
+  const baselineMedianCorr = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.corrections)) : null;
+
+  const latestSession = sessionCount > 0 ? history[sessionCount - 1] : null;
+  const currentBaseline = latestSession 
+    ? PersonalBaselineEngine.evaluateAgainstBaseline(activeUserId, latestSession, 'overall')
+    : null;
+  const currentStatus: 'CALIBRATING' | 'NORMAL' | 'MINOR_DEVIATION' | 'MEANINGFUL_DEVIATION' = 
+    isCalibrating ? 'CALIBRATING' : (currentBaseline?.status || 'NORMAL');
 
   // Handle Switch Profile
   const handleProfileSelect = (user: User) => {
     setSelectedUser(user);
     switchProfile(user);
+    loadUserHistory(user.id);
+    loadFamiliarPeople(user.id);
     setStep('intro');
     setTouchVector(null);
     setVoiceVector(null);
@@ -205,6 +294,7 @@ export default function PersonalPatternExperience() {
 
     // 3. Store in Personal History
     PersonalBaselineEngine.recordSession(activeUserId, sessionVector, 'overall');
+    loadUserHistory(activeUserId);
 
     // 4. Determine Real-time Adaptation
     let nextDiff = currentDifficulty;
@@ -221,6 +311,7 @@ export default function PersonalPatternExperience() {
     // 4.5 Generate natural-language behavioral explanation (instant template + async Ollama Gemma 3 4B)
     const explanationReq: BehavioralExplanationRequest = {
       profileName: selectedUser?.display_name || selectedUser?.name || 'Individual',
+      language,
       baseline: {
         medianAccuracy: bMetrics.baselineMedianAccuracy,
         medianLatencyMs: bMetrics.baselineMedianLatencyMs,
@@ -433,56 +524,107 @@ export default function PersonalPatternExperience() {
               </div>
             )}
 
-            {/* Hero Card: "The phone learns your pattern." */}
+            {/* Hero Card: "The phone learns what normal looks like for you." */}
             <div className="p-6 rounded-3xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 shadow-md text-center mb-5">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-[10px] text-blue-700 dark:text-blue-300 font-bold mb-3">
-                <ShieldCheck size={12} className="text-blue-500 dark:text-blue-400" />
-                <span>Demo profile — representative historical sessions</span>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-[10px] text-blue-700 dark:text-blue-300 font-bold">
+                  <ShieldCheck size={12} className="text-blue-500 dark:text-blue-400" />
+                  <span>{selectedUser?.is_demo ? 'Demo Profile (Pre-Calibrated)' : 'Personal Behavioral Memory'}</span>
+                </div>
+
+                {/* 🔊 Listen Button for Personal Pattern Voice Summary */}
+                <button
+                  onClick={() => {
+                    const summary = InstructionService.getPersonalPatternSummary(currentStatus, language, sessionCount);
+                    VoiceService.speak(summary, language, true);
+                  }}
+                  type="button"
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
+                  title="Listen to Personal Pattern summary"
+                >
+                  <Volume2 size={13} />
+                  <span>{InstructionService.getCommon('listen', language)}</span>
+                </button>
               </div>
+
+              {/* Synchronized Voice Subtitle Box if speaking */}
+              {voiceSubtitles && (
+                <div className="mb-3 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-300 dark:border-blue-700 text-left animate-in fade-in">
+                  <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 block mb-0.5">
+                    🔊 Voice Summary
+                  </span>
+                  <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">
+                    "{voiceSubtitles}"
+                  </p>
+                </div>
+              )}
 
               <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-400/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-3">
                 <Brain size={26} />
               </div>
 
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white mb-1">
-                Learning your pattern
+              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white mb-0.5">
+                Personal Behavioral Pattern
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-5">
-                Session {sessionCount} of 10 • On-Device Adaptive Companion
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-4">
+                "Your phone learns what normal looks like for you."
               </p>
+
+              {/* Status Pill */}
+              <div className="mb-4">
+                {isCalibrating ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 text-xs font-bold">
+                    <span>🌱 Building your personal baseline ({sessionCount} of 3 sessions)</span>
+                  </div>
+                ) : currentStatus === 'MEANINGFUL_DEVIATION' ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                    <span>⚡ Meaningful Variation from Personal Baseline</span>
+                  </div>
+                ) : currentStatus === 'MINOR_DEVIATION' ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200 text-xs font-bold">
+                    <span>🔍 Minor Variation Observed (Activities Adjusted)</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-bold">
+                    <span>✓ Aligned Within Your Usual Pattern</span>
+                  </div>
+                )}
+              </div>
 
               {/* Baseline Summary Metrics */}
               <div className="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 mb-4 text-center">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Accuracy</span>
                   <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                    {Math.round(baselineMedianAcc * 100)}%
+                    {baselineMedianAcc !== null ? `${Math.round(baselineMedianAcc * 100)}%` : '--'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Response</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Response Time</span>
                   <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">
-                    {(baselineMedianLat / 1000).toFixed(1)}s
+                    {baselineMedianLat !== null ? `${(baselineMedianLat / 1000).toFixed(1)}s` : '--'}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Corrections</span>
                   <span className="text-base font-extrabold text-purple-600 dark:text-purple-400">
-                    {baselineMedianCorr}
+                    {baselineMedianCorr !== null ? baselineMedianCorr : '--'}
                   </span>
                 </div>
               </div>
 
-              {/* Personal Baseline Progress Bar */}
+              {/* Calibration Progress Bar */}
               <div className="text-left mb-2">
                 <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  <span>Personal baseline</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-extrabold">{Math.min(100, sessionCount * 10)}% calibrated</span>
+                  <span>{isCalibrating ? 'Calibration Progress' : 'Baseline Calibration'}</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-extrabold">
+                    {Math.min(100, Math.round((sessionCount / 3) * 100))}% ({sessionCount}/3 sessions)
+                  </span>
                 </div>
                 <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-700/60 overflow-hidden flex">
                   <div
                     className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(25, sessionCount * 10))}%` }}
+                    style={{ width: `${Math.min(100, Math.max(sessionCount > 0 ? 33 : 10, (sessionCount / 3) * 100))}%` }}
                   />
                 </div>
               </div>
@@ -494,34 +636,47 @@ export default function PersonalPatternExperience() {
               >
                 <div className="flex items-center gap-1.5">
                   <History size={14} className="text-blue-500" />
-                  <span>Longitudinal Memory Journey ({history.length} sessions)</span>
+                  <span>Longitudinal Memory Journey ({history.length} sessions recorded)</span>
                 </div>
                 <span className="text-xs">{showTimeline ? '▲' : '▼'}</span>
               </button>
 
               {showTimeline && (
-                <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-left space-y-2.5 text-xs animate-in fade-in">
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
-                    <div>
-                      <span className="font-bold text-slate-900 dark:text-white block">Calibration Phase (Sessions 1–3)</span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Learned initial touch hold time and response latencies.</span>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
-                    <div>
-                      <span className="font-bold text-slate-900 dark:text-white block">Baseline Established (Sessions 4–6)</span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">MAD statistics stabilized individual medians. Zero cross-profile leakage.</span>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
-                    <div>
-                      <span className="font-bold text-slate-900 dark:text-white block">Longitudinal Stability (Sessions 7+)</span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Stable touch cadence ({Math.round(baselineMedianLat)}ms) tracked across days.</span>
-                    </div>
-                  </div>
+                <div className="mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-left space-y-2 text-xs animate-in fade-in max-h-60 overflow-y-auto">
+                  {history.length === 0 ? (
+                    <p className="text-slate-400 text-center py-2 text-xs">
+                      No recorded sessions yet. Start an activity below to begin calibration.
+                    </p>
+                  ) : (
+                    history.map((sess, idx) => {
+                      const phase = idx < 3 ? 'Calibration' : 'Baseline Active';
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">
+                                Session {idx + 1} • {phase}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {new Date(sess.timestamp).toLocaleDateString()} {new Date(sess.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-xs block">
+                              {Math.round(sess.accuracy * 100)}%
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {(sess.mean_response_time_ms / 1000).toFixed(1)}s
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>
@@ -605,6 +760,9 @@ export default function PersonalPatternExperience() {
         {/* STEP: Camera Activity */}
         {step === 'camera_activity' && (
           <CameraRecallActivity
+            familiarPerson={activeFamiliarPerson}
+            familiarPeopleList={familiarPeople}
+            onSelectPerson={(p) => setActiveFamiliarPerson(p)}
             onComplete={handleCameraComplete}
             onCancel={() => setStep('intro')}
           />
@@ -661,19 +819,19 @@ export default function PersonalPatternExperience() {
                   <div>
                     <span className="text-[10px] text-slate-400 block font-medium">Median Accuracy</span>
                     <span className="text-sm font-black text-slate-900 dark:text-white">
-                      {Math.round((baselineMetrics?.baselineMedianAccuracy ?? baselineMedianAcc) * 100)}%
+                      {Math.round((baselineMetrics?.baselineMedianAccuracy ?? baselineMedianAcc ?? 0.85) * 100)}%
                     </span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block font-medium">Response Latency</span>
                     <span className="text-sm font-black text-slate-900 dark:text-white">
-                      {(((baselineMetrics?.baselineMedianLatencyMs ?? baselineMedianLat)) / 1000).toFixed(1)}s
+                      {(((baselineMetrics?.baselineMedianLatencyMs ?? baselineMedianLat ?? 2000)) / 1000).toFixed(1)}s
                     </span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block font-medium">Corrections</span>
                     <span className="text-sm font-black text-slate-900 dark:text-white">
-                      {baselineMetrics?.baselineMedianCorrections ?? baselineMedianCorr}
+                      {baselineMetrics?.baselineMedianCorrections ?? baselineMedianCorr ?? 1}
                     </span>
                   </div>
                 </div>
@@ -688,19 +846,19 @@ export default function PersonalPatternExperience() {
                 <div className="space-y-1.5">
                   <div>
                     <span className="text-[10px] text-slate-400 block font-medium">Session Accuracy</span>
-                    <span className={`text-sm font-black ${(touchVector?.accuracy || 0.9) < (baselineMetrics?.baselineMedianAccuracy ?? baselineMedianAcc) - 0.1 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    <span className={`text-sm font-black ${(touchVector?.accuracy || 0.9) < (baselineMetrics?.baselineMedianAccuracy ?? baselineMedianAcc ?? 0.85) - 0.1 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                       {Math.round((touchVector?.accuracy || 0.9) * 100)}%
                     </span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block font-medium">Response Latency</span>
-                    <span className={`text-sm font-black ${(touchVector?.mean_inter_tap_latency_ms || 2000) > (baselineMetrics?.baselineMedianLatencyMs ?? baselineMedianLat) * 1.25 ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                    <span className={`text-sm font-black ${(touchVector?.mean_inter_tap_latency_ms || 2000) > (baselineMetrics?.baselineMedianLatencyMs ?? baselineMedianLat ?? 2000) * 1.25 ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
                       {(((touchVector?.mean_inter_tap_latency_ms || 2000)) / 1000).toFixed(1)}s
                     </span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block font-medium">Corrections</span>
-                    <span className={`text-sm font-black ${Math.round((touchVector?.correction_rate || 0) * (touchVector?.total_taps || 10)) > (baselineMetrics?.baselineMedianCorrections ?? baselineMedianCorr) + 1 ? 'text-amber-600 dark:text-amber-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                    <span className={`text-sm font-black ${Math.round((touchVector?.correction_rate || 0) * (touchVector?.total_taps || 10)) > (baselineMetrics?.baselineMedianCorrections ?? baselineMedianCorr ?? 1) + 1 ? 'text-amber-600 dark:text-amber-400' : 'text-purple-600 dark:text-purple-400'}`}>
                       {Math.round((touchVector?.correction_rate || 0) * (touchVector?.total_taps || 10)) || (touchVector && touchVector.accuracy < 0.65 ? 3 : 1)}
                     </span>
                   </div>

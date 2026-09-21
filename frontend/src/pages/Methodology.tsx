@@ -53,8 +53,8 @@ export default function Methodology() {
 
             <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="text-2xl mb-1">🔍</div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">3. Object & Person Rec</h3>
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">Visual & Face Recognition</p>
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">3. Visual & Object Recall</h3>
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">Visual Recall</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Visual identification and caregiver-uploaded family photos.</p>
             </div>
 

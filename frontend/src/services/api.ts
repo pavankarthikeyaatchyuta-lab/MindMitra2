@@ -108,8 +108,8 @@ export const api = {
       name: profile.name,
       display_name: profile.name,
       age: profile.age,
-      preferred_language: profile.preferred_language,
-      voice_enabled: profile.voice_enabled,
+      preferred_language: profile.preferred_language || 'te',
+      voice_enabled: profile.voice_enabled ?? true,
       caregiver_id: 1,
       is_archived: false,
       created_at: new Date().toISOString()
@@ -119,6 +119,8 @@ export const api = {
       name: newProfile.name || 'Individual',
       display_name: newProfile.display_name,
       age: newProfile.age,
+      preferred_language: newProfile.preferred_language,
+      voice_enabled: newProfile.voice_enabled,
       created_at: newProfile.created_at
     });
     if (!isOnline()) return newProfile;
@@ -134,8 +136,34 @@ export const api = {
     if (found) return found as unknown as User;
     return fetchJSON<User>(`/profiles/${id}`, {}, `profile_${id}`);
   },
-  updateProfile: (id: number, profile: { name?: string; age?: number; preferred_language?: string; voice_enabled?: boolean }) =>
-    fetchJSON<User>(`/profiles/${id}`, { method: 'PUT', body: JSON.stringify(profile) }),
+  updateProfile: async (id: number, profile: { name?: string; age?: number; preferred_language?: string; voice_enabled?: boolean }): Promise<User> => {
+    let localUpdated: StoredProfile | null = null;
+    try {
+      localUpdated = await PersonalMemoryDB.updateProfile(id, profile);
+      const savedUserStr = localStorage.getItem('mindmitra_current_user');
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        if (savedUser.id === id) {
+          const merged = { ...savedUser, ...profile };
+          localStorage.setItem('mindmitra_current_user', JSON.stringify(merged));
+        }
+      }
+      if (profile.preferred_language) {
+        localStorage.setItem('mindmitra_lang', profile.preferred_language);
+      }
+    } catch (e) {
+      console.warn('PersonalMemoryDB updateProfile notice:', e);
+    }
+
+    if (!isOnline()) {
+      return (localUpdated as unknown as User) || ({ id, ...profile } as User);
+    }
+    try {
+      return await fetchJSON<User>(`/profiles/${id}`, { method: 'PUT', body: JSON.stringify(profile) });
+    } catch {
+      return (localUpdated as unknown as User) || ({ id, ...profile } as User);
+    }
+  },
   archiveProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}/archive`, { method: 'POST' }),
   restoreProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}/restore`, { method: 'POST' }),
   deleteProfile: (id: number) => fetchJSON<{ status: string; id: number }>(`/profiles/${id}`, { method: 'DELETE' }),
@@ -165,6 +193,7 @@ export const api = {
     return fetchJSON<any>(`/sessions/${sessionId}/complete`, { method: 'POST' });
   },
   getUserSessions: (userId: number) => fetchJSON<Session[]>(`/sessions/user/${userId}`, {}, `sessions_${userId}`),
+  getCanonicalSessionCount: (userId: number) => fetchJSON<{ user_id: number; session_count: number; game_session_count: number }>(`/sessions/canonical-count/${userId}`),
   getSessionDetails: (sessionId: number) => fetchJSON<any>(`/sessions/${sessionId}`, {}, `session_${sessionId}`),
 
   // Game Sessions
@@ -182,8 +211,18 @@ export const api = {
   },
   completeGameSession: async (id: number, metrics: any) => {
     // Record to local behavioral memory DB
-    const uid = metrics.user_id || metrics.userId || 1;
-    PersonalMemoryDB.recordSession({
+    let uid = metrics.user_id || metrics.userId;
+    if (!uid) {
+      try {
+        const savedUserStr = localStorage.getItem('mindmitra_current_user');
+        if (savedUserStr) {
+          const savedUser = JSON.parse(savedUserStr);
+          uid = savedUser.id;
+        }
+      } catch {}
+    }
+    if (!uid) uid = 1;
+    const sessionPayload = {
       userId: uid,
       domain: metrics.game_type || 'overall',
       accuracy: metrics.accuracy ?? 0.8,
@@ -193,7 +232,14 @@ export const api = {
       completion_time_ms: metrics.completion_time_ms ?? 25000,
       difficulty: metrics.difficulty ?? 2,
       timestamp: new Date().toISOString()
-    });
+    };
+    PersonalMemoryDB.recordSession(sessionPayload);
+    if (sessionPayload.domain !== 'overall') {
+      PersonalMemoryDB.recordSession({
+        ...sessionPayload,
+        domain: 'overall'
+      });
+    }
 
     if (!isOnline()) {
       saveOfflineEvent({ type: 'complete_game_session', id, data: metrics });
@@ -226,13 +272,105 @@ export const api = {
     }),
   getAdaptiveHistory: (userId: number) => fetchJSON<AdaptiveDecision[]>(`/adaptive/history/${userId}`, {}, `adaptive_${userId}`),
 
-  // Familiar People (Caregiver Managed)
-  getFamiliarPeople: (userId: number) => fetchJSON<FamiliarPerson[]>(`/familiar-people/${userId}`, {}, `familiar_${userId}`),
-  addFamiliarPerson: (person: { user_id: number; name: string; relationship: string; photo_url: string; consent_confirmed: boolean }) =>
-    fetchJSON<{ id: number; status: string }>('/familiar-people', { method: 'POST', body: JSON.stringify(person) }),
-  updateFamiliarPerson: (id: number, person: { name: string; relationship: string; photo_url: string; consent_confirmed: boolean }) =>
-    fetchJSON<any>(`/familiar-people/${id}`, { method: 'PUT', body: JSON.stringify(person) }),
-  deleteFamiliarPerson: (id: number) => fetchJSON<any>(`/familiar-people/${id}`, { method: 'DELETE' }),
+  // Familiar People (Caregiver Managed with Offline Persistence)
+  getFamiliarPeople: async (userId: number): Promise<FamiliarPerson[]> => {
+    const storageKey = `mindmitra_familiar_${userId}`;
+    const localSaved = localStorage.getItem(storageKey);
+    let localList: FamiliarPerson[] = localSaved ? JSON.parse(localSaved) : [];
+
+    if (isOnline()) {
+      try {
+        const fetched = await fetchJSON<FamiliarPerson[]>(`/familiar-people/${userId}`, {}, `familiar_${userId}`);
+        if (fetched && fetched.length > 0) {
+          localStorage.setItem(storageKey, JSON.stringify(fetched));
+          return fetched;
+        }
+      } catch (err) {
+        console.warn('Network getFamiliarPeople fallback to local:', err);
+      }
+    }
+
+    if (localList.length > 0) {
+      return localList;
+    }
+
+    // Default seeded fallbacks ONLY for demo profiles (Rajesh: 1, Sunita: 2)
+    if (userId === 1) {
+      const defaults: FamiliarPerson[] = [
+        { id: 101, user_id: 1, name: 'Anita Kumar', relationship: 'Daughter', photo_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400', consent_confirmed: true },
+        { id: 102, user_id: 1, name: 'Ramesh Kumar', relationship: 'Son', photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400', consent_confirmed: true },
+        { id: 103, user_id: 1, name: 'Lakshmi Devi', relationship: 'Wife', photo_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', consent_confirmed: true },
+        { id: 104, user_id: 1, name: 'Vikram Kumar', relationship: 'Grandson', photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', consent_confirmed: true },
+      ];
+      localStorage.setItem(storageKey, JSON.stringify(defaults));
+      return defaults;
+    } else if (userId === 2) {
+      const defaults: FamiliarPerson[] = [
+        { id: 201, user_id: 2, name: 'Meera Sharma', relationship: 'Daughter', photo_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400', consent_confirmed: true },
+        { id: 202, user_id: 2, name: 'Arun Sharma', relationship: 'Son', photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400', consent_confirmed: true },
+        { id: 203, user_id: 2, name: 'Pooja Sharma', relationship: 'Granddaughter', photo_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', consent_confirmed: true },
+      ];
+      localStorage.setItem(storageKey, JSON.stringify(defaults));
+      return defaults;
+    }
+    return [];
+  },
+  addFamiliarPerson: async (person: { user_id: number; name: string; relationship: string; photo_url: string; consent_confirmed: boolean }) => {
+    const newId = Date.now();
+    const newRecord: FamiliarPerson = { id: newId, ...person };
+    const storageKey = `mindmitra_familiar_${person.user_id}`;
+    const existing: FamiliarPerson[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    existing.push(newRecord);
+    localStorage.setItem(storageKey, JSON.stringify(existing));
+
+    if (!isOnline()) {
+      return { id: newId, status: 'saved_offline' };
+    }
+    try {
+      return await fetchJSON<{ id: number; status: string }>('/familiar-people', { method: 'POST', body: JSON.stringify(person) });
+    } catch {
+      return { id: newId, status: 'saved_offline' };
+    }
+  },
+  updateFamiliarPerson: async (id: number, person: { name: string; relationship: string; photo_url: string; consent_confirmed: boolean }) => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('mindmitra_familiar_')) {
+        const list: FamiliarPerson[] = JSON.parse(localStorage.getItem(key) || '[]');
+        const idx = list.findIndex(p => p.id === id);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...person };
+          localStorage.setItem(key, JSON.stringify(list));
+          break;
+        }
+      }
+    }
+    if (!isOnline()) return { status: 'saved_offline' };
+    try {
+      return await fetchJSON<any>(`/familiar-people/${id}`, { method: 'PUT', body: JSON.stringify(person) });
+    } catch {
+      return { status: 'saved_offline' };
+    }
+  },
+  deleteFamiliarPerson: async (id: number) => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('mindmitra_familiar_')) {
+        const list: FamiliarPerson[] = JSON.parse(localStorage.getItem(key) || '[]');
+        const filtered = list.filter(p => p.id !== id);
+        if (filtered.length !== list.length) {
+          localStorage.setItem(key, JSON.stringify(filtered));
+          break;
+        }
+      }
+    }
+    if (!isOnline()) return { status: 'saved_offline' };
+    try {
+      return await fetchJSON<any>(`/familiar-people/${id}`, { method: 'DELETE' });
+    } catch {
+      return { status: 'saved_offline' };
+    }
+  },
 
   // Analytics
   getBaseline: (userId: number, gameType: string) => fetchJSON<Baseline>(`/analytics/baseline/${userId}/${gameType}`, {}, `baseline_${userId}_${gameType}`),

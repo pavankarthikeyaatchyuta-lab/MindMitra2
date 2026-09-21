@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
   accuracy: number;
@@ -18,7 +19,7 @@ export interface GameProps {
   onComplete: (metrics: GameMetrics) => void;
 }
 
-const SYMBOLS = ['★', '✦', '⬤', '▲', '◆', '☀️', '🌙', '🪐'];
+const SYMBOLS = ['⭐', '🔷', '🔴', '🔺', '🟩', '☀️', '🌙', '🌸'];
 
 interface RoundData {
   pattern: string[];
@@ -30,13 +31,13 @@ interface RoundData {
 }
 
 export default function PatternRecall({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
-  const { t } = useTranslation();
-  const patternLength = Math.min(5, difficulty + 1); // Level 1 = 2 symbols, Level 2 = 3, etc.
+  const { t, language } = useTranslation();
+  const patternLength = Math.min(5, Math.max(2, difficulty + 1)); // Level 1 = 2 symbols, Level 2 = 3, etc.
   const totalRounds = 3;
-  // Distractors differ by more symbols at low difficulty (easier to spot)
+  // Distractors differ clearly at lower levels
   const swapCount = difficulty <= 2 ? 2 : 1;
-  // Observation time scales with pattern length (6s for 2 symbols, up to 10s)
-  const observeTime = Math.min(10, 4 + patternLength);
+  // Comfortable observation time for elderly vision (10s for Level 1, up to 14s)
+  const observeTime = Math.min(14, 6 + patternLength * 2);
 
   const [stage, setStage] = useState<'memorize' | 'recall'>('memorize');
   const [rounds, setRounds] = useState<RoundData[]>([]);
@@ -46,6 +47,8 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
   const [isLocked, setIsLocked] = useState(false);
   const [countdown, setCountdown] = useState(observeTime);
 
+  const idleTimerRef = useRef<any>(null);
+
   const stats = useRef({
     correctRounds: 0,
     errors: 0,
@@ -54,6 +57,19 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     startTime: 0,
     lastActionTime: 0
   });
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      VoiceService.speakContext('pattern_recall', 'idle', language, false);
+    }, 14000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     initGame();
@@ -80,12 +96,15 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     const generated: RoundData[] = [];
     for (let r = 0; r < totalRounds; r++) {
       const pattern: string[] = [];
-      for (let i = 0; i < patternLength; i++) {
-        pattern.push(SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]);
+      while (pattern.length < patternLength) {
+        const candidate = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+        if (pattern.length === 0 || pattern[pattern.length - 1] !== candidate) {
+          pattern.push(candidate);
+        }
       }
 
-      // Number of distractors: 2 at level 1 (3 total options), 3 at level 2+ (4 total options)
-      const distractorCount = difficulty <= 1 ? 2 : 3;
+      // Number of distractors: 1 at Level 1 (2 options), 2 at Level 2 (3 options), 3 at Level 3+ (4 options)
+      const distractorCount = difficulty <= 1 ? 1 : difficulty === 2 ? 2 : 3;
       const distractors: string[][] = [];
       let safety = 0;
       while (distractors.length < distractorCount && safety < 100) {
@@ -139,11 +158,13 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
   const startRecall = () => {
     setStage('recall');
     stats.current.lastActionTime = Date.now();
+    resetIdleTimer();
   };
 
   const handleSelectOption = (option: { id: string; pattern: string[]; isCorrect: boolean }) => {
     if (isLocked) return;
 
+    resetIdleTimer();
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
     stats.current.responseTimes.push(rt);
@@ -154,16 +175,19 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
 
     if (option.isCorrect) {
       stats.current.correctRounds++;
+      VoiceService.speakContext('pattern_recall', 'success', language, false);
       setFeedback('correct');
       setTimeout(() => advanceRound(), 1200);
     } else {
       stats.current.errors++;
+      VoiceService.speakContext('pattern_recall', 'incorrect', language, false);
       setFeedback('incorrect');
       setTimeout(() => advanceRound(), 2200);
     }
   };
 
   const advanceRound = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     setSelectedOptionId(null);
     setFeedback(null);
     setIsLocked(false);
@@ -179,6 +203,7 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
   };
 
   const finishGame = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     const now = Date.now();
     const totalTime = now - stats.current.startTime;
     const avgRt = stats.current.responseTimes.length > 0

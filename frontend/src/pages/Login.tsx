@@ -4,10 +4,10 @@ import { Brain, Mail, Lock, User, ArrowRight, Sparkles, AlertCircle, Eye, EyeOff
 import { useApp } from '../context/AppContext';
 import ThemeToggle from '../components/ThemeToggle';
 
-export default function Login() {
+export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
   const navigate = useNavigate();
   const { login, register } = useApp();
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(initialRegister);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -88,14 +88,14 @@ export default function Login() {
     if (isRegister) {
       const result = await register(name, email, password);
       if (result.success) {
-        navigate('/profiles');
+        navigate('/home');
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
     } else {
       const result = await login(email, password);
       if (result.success) {
-        navigate('/profiles');
+        navigate('/home');
       } else {
         setError(result.error || 'Email or password is incorrect.');
       }
@@ -108,12 +108,12 @@ export default function Login() {
     setLoading(true);
     const result = await login('pavan@mindmitra.com', 'mindmitra123');
     if (result.success) {
-      navigate('/profiles');
+      navigate('/home');
     } else {
       // Fallback demo account registration if needed
       const regResult = await register('Pavan Kumar', 'pavan@mindmitra.com', 'mindmitra123');
       if (regResult.success) {
-        navigate('/profiles');
+        navigate('/home');
       } else {
         setError('Could not connect to backend server. Check your connection and try again.');
       }

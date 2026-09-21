@@ -18,6 +18,8 @@ export interface StoredProfile {
   age?: number;
   relationship?: string;
   is_demo?: boolean;
+  preferred_language?: string;
+  voice_enabled?: boolean;
   created_at: string;
 }
 
@@ -138,9 +140,7 @@ export class PersonalMemoryDB {
           if (req.result && req.result.length > 0) {
             resolve(req.result);
           } else {
-            // Seed default profiles if completely empty
-            const defaults = this.getDefaultProfiles();
-            this.seedProfiles(defaults).then(() => resolve(defaults));
+            resolve([]);
           }
         };
         req.onerror = () => reject(req.error);
@@ -151,7 +151,7 @@ export class PersonalMemoryDB {
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
-      return this.getDefaultProfiles();
+      return [];
     }
   }
 
@@ -174,6 +174,21 @@ export class PersonalMemoryDB {
     }
   }
 
+  public static async updateProfile(id: number, updates: Partial<StoredProfile>): Promise<StoredProfile> {
+    const profiles = await this.getProfiles();
+    const existing = profiles.find(p => p.id === id);
+    if (!existing) {
+      throw new Error(`Profile with id ${id} not found`);
+    }
+    const updated: StoredProfile = {
+      ...existing,
+      ...updates,
+      id, // ensure id remains fixed
+    };
+    await this.saveProfile(updated);
+    return updated;
+  }
+
   private static getDefaultProfiles(): StoredProfile[] {
     return [
       {
@@ -183,6 +198,8 @@ export class PersonalMemoryDB {
         age: 72,
         relationship: 'Father',
         is_demo: true,
+        preferred_language: 'te',
+        voice_enabled: true,
         created_at: '2026-09-01T08:00:00Z',
       },
       {
@@ -192,6 +209,8 @@ export class PersonalMemoryDB {
         age: 68,
         relationship: 'Mother',
         is_demo: true,
+        preferred_language: 'hi',
+        voice_enabled: true,
         created_at: '2026-09-01T08:00:00Z',
       },
     ];
@@ -256,6 +275,33 @@ export class PersonalMemoryDB {
         req.onerror = () => reject(req.error);
       });
     } catch {
+      if (domain === 'overall') {
+        // Collect across all domains if overall key alone is insufficient
+        const collected: StoredSessionEvidence[] = [];
+        const seenIds = new Set<string>();
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(`mindmitra_profile_history_${userId}_`)) {
+              const val = localStorage.getItem(k);
+              if (val) {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) {
+                  parsed.forEach(item => {
+                    const idKey = item.id || (item.timestamp + '_' + item.domain);
+                    if (!seenIds.has(idKey)) {
+                      seenIds.add(idKey);
+                      collected.push(item);
+                    }
+                  });
+                }
+              }
+            }
+          }
+        } catch {}
+        collected.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return collected;
+      }
       const key = 'mindmitra_profile_history_' + userId + '_' + domain;
       const saved = localStorage.getItem(key);
       if (saved) {
@@ -340,5 +386,71 @@ export class PersonalMemoryDB {
       const key = 'mindmitra_adaptations_' + userId;
       return JSON.parse(localStorage.getItem(key) || '[]');
     }
+  }
+
+  public static async clearUserData(userId: number): Promise<void> {
+    try {
+      const db = await this.getDB();
+      // Clear sessions for userId
+      const sTx = db.transaction('sessions', 'readwrite');
+      const sStore = sTx.objectStore('sessions');
+      const sIdx = sStore.index('userId');
+      const sReq = sIdx.openKeyCursor(IDBKeyRange.only(userId));
+      sReq.onsuccess = () => {
+        const cursor = sReq.result;
+        if (cursor) {
+          sStore.delete(cursor.primaryKey);
+          cursor.continue();
+        }
+      };
+
+      // Clear adaptations for userId
+      const aTx = db.transaction('adaptations', 'readwrite');
+      const aStore = aTx.objectStore('adaptations');
+      const aIdx = aStore.index('userId');
+      const aReq = aIdx.openKeyCursor(IDBKeyRange.only(userId));
+      aReq.onsuccess = () => {
+        const cursor = aReq.result;
+        if (cursor) {
+          aStore.delete(cursor.primaryKey);
+          cursor.continue();
+        }
+      };
+    } catch {}
+
+    // Clean localStorage keys for this user
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.includes(`_${userId}_`) || k.endsWith(`_${userId}`))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch {}
+  }
+
+  public static async purgeAll(): Promise<void> {
+    try {
+      const db = await this.getDB();
+      ['profiles', 'sessions', 'baselines', 'adaptations'].forEach(storeName => {
+        try {
+          const tx = db.transaction(storeName, 'readwrite');
+          tx.objectStore(storeName).clear();
+        } catch {}
+      });
+    } catch {}
+
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('mindmitra_') || k.startsWith('offline_'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch {}
   }
 }
