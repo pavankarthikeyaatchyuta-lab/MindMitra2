@@ -128,9 +128,9 @@ export const ACTIVITY_INSTRUCTIONS: Record<ActivityId, ActivityInstructionSet> =
 
   object_recognition: {
     name: {
-      en: 'Object & Family Recall',
-      te: 'వస్తువులు & కుటుంబ సభ్యుల గుర్తింపు',
-      hi: 'वस्तु और परिवार पहचान',
+      en: 'Visual Recall',
+      te: 'విజువల్ రీకాల్',
+      hi: 'विजुअल रिकॉल',
     },
     welcome: {
       en: 'Look closely at the picture and tap the matching name below.',
@@ -224,9 +224,9 @@ export const ACTIVITY_INSTRUCTIONS: Record<ActivityId, ActivityInstructionSet> =
 
   visual_recall: {
     name: {
-      en: 'Visual Observation Recall',
-      te: 'దృశ్య పరిశీలన వ్యాయామం',
-      hi: 'दृश्य अवलोकन अभ्यास',
+      en: 'Visual Recall',
+      te: 'విజువల్ రీకాల్',
+      hi: 'विजुअल रिकॉल',
     },
     welcome: {
       en: 'Look at the visual prompt on screen, observe the details, then confirm when ready.',

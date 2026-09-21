@@ -12,6 +12,16 @@
     <meta name="apple-mobile-web-app-title" content="MindMitra" />
     <link rel="manifest" href="/manifest.json" />
     <title>MindMitra — Personal Behavioral Memory</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('mindmitra_theme');
+          var theme = saved === 'dark' ? 'dark' : 'light';
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -447,7 +447,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       const offer = await pc.createOffer({ offerToReceiveAudio: true });
       await pc.setLocalDescription(offer);
 
-      const callerName = currentProfile?.display_name || currentUser?.display_name || (caregiver ? caregiver.name : 'Polayya');
+      const callerName = currentProfile?.display_name || currentUser?.display_name || (caregiver ? caregiver.name : 'Individual');
       await api.sendCallSignal(activeUserId, targetUserId, 'offer', offer, undefined, callerName);
 
       // 5. 25-Second Ring Timeout

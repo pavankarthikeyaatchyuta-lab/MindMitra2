@@ -35,8 +35,8 @@ export const en = {
   session: {
     todays_session: 'Today\'s Exercises',
     game_1_title: 'Memory Match',
-    game_2_title: 'Daily Routine',
-    game_3_title: 'Object & Familiar Person Recognition',
+    game_2_title: 'Daily Routine Recall',
+    game_3_title: 'Visual Recall',
     game_4_title: 'Pattern Recall',
     session_complete: 'Session Complete!',
     great_work: 'Great work today!',
@@ -69,7 +69,7 @@ export const en = {
       try_again: 'Let\'s check the next step together.',
     },
     recognition: {
-      title: 'Object & Familiar Person Recognition',
+      title: 'Visual Recall',
       description: 'Identify objects from images alone, and recognize familiar family members.',
       instructions: 'Look at the image choices and select the one that answers the question.',
       which_is: 'Which one is this?',
@@ -78,10 +78,10 @@ export const en = {
       excellent: 'Excellent identification!',
     },
     familiar: {
-      title: 'Familiar Person Recognition',
+      title: 'Visual Recall',
       question: 'Who is this?',
-      unconfigured: 'Familiar Person Recognition is not configured for this profile.',
-      need_more: 'Add at least 3 familiar people in the Caregiver view for recognition mode.',
+      unconfigured: 'Visual Recall is not configured for this profile.',
+      need_more: 'Add at least 3 familiar people in the Caregiver view for recall mode.',
     },
     pattern: {
       title: 'Pattern Recall',

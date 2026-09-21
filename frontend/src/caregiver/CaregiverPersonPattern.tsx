@@ -40,14 +40,14 @@ import {
 import { LocalTemplateExplanationProvider } from '../services/explanationProvider';
 
 const DOMAIN_LABELS: Record<string, string> = {
-  short_term_memory: 'Short-Term Memory',
-  sequential_episodic_memory: 'Daily Routine & Sequential Recall',
-  visual_familiar_recognition: 'Visual & Familiar Person Recognition',
-  pattern_attention: 'Pattern Recognition & Attention',
-  memory_match: 'Short-Term Memory',
+  short_term_memory: 'Memory Match',
+  sequential_episodic_memory: 'Daily Routine Recall',
+  visual_familiar_recognition: 'Visual Recall',
+  pattern_attention: 'Pattern Recall',
+  memory_match: 'Memory Match',
   daily_routine: 'Daily Routine Recall',
-  object_recognition: 'Visual Recognition',
-  pattern_recall: 'Pattern Attention',
+  object_recognition: 'Visual Recall',
+  pattern_recall: 'Pattern Recall',
 };
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; border: string; icon: any; label: string }> = {

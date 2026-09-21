@@ -50,8 +50,8 @@ export default function ActivitiesList() {
     {
       id: 'recognition',
       gameType: 'object_recognition',
-      title: 'Visual & Familiar Recall',
-      domain: 'Visual & Familiar Recall',
+      title: 'Visual Recall',
+      domain: 'Visual Memory',
       description: 'Identify familiar everyday objects and family members uploaded with care.',
       icon: '🔍',
       telemetryNote: 'Measures recognition latency, visual scanning pauses, and assisted prompts.',

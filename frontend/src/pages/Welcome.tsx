@@ -243,8 +243,8 @@ export default function Welcome() {
               iconBg: 'bg-indigo-100 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-900',
             },
             {
-              title: 'Visual & Familiar Recall',
-              domain: 'Visual & Distractor Recall',
+              title: 'Visual Recall',
+              domain: 'Visual Memory',
               desc: 'Identify familiar items and verified family photos with safe camera or photo card fallback.',
               emoji: '🔍',
               badge: 'Familiarity Memory',

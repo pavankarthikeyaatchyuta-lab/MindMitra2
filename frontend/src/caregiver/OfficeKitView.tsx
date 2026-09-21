@@ -25,8 +25,7 @@ import {
   OllamaExplanationProvider, 
   BehavioralExplanationRequest 
 } from '../services/explanationProvider';
-import ThemeToggle from '../components/ThemeToggle';
-import CaregiverAccountMenu from '../components/CaregiverAccountMenu';
+import AppLayout from '../components/layout/AppLayout';
 
 export default function OfficeKitView() {
   const navigate = useNavigate();
@@ -143,47 +142,8 @@ export default function OfficeKitView() {
   const isDeviation = latestPacket?.status === 'MEANINGFUL_DEVIATION';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150">
-      {/* Top Navbar */}
-      <nav className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-y-2 sticky top-0 z-30">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link
-            to="/caregiver"
-            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
-            title="Caregiver Dashboard"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
-              <Laptop size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">MINDMITRA OFFICE KIT</h1>
-                <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-500/50 text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
-                  Caregiver Intelligence Layer
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">Real-Time Phone Telemetry Aggregator & Longitudinal Explainer</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            to="/home"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-sm"
-          >
-            <Smartphone size={14} />
-            <span>View as Individual</span>
-          </Link>
-          <ThemeToggle />
-          <CaregiverAccountMenu />
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto p-4 sm:p-6 flex flex-col gap-6">
+    <AppLayout mode="caregiver">
+      <div className="max-w-6xl mx-auto w-full flex flex-col gap-6">
         {/* Connection Status Ribbon */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-2.5">
@@ -425,6 +385,6 @@ export default function OfficeKitView() {
           ⚠️ MindMitra provides behavioral and cognitive-wellness support. It is not a medical diagnostic system.
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

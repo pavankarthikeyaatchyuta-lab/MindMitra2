@@ -1,37 +1,47 @@
 import React from 'react';
-import { Sun, Moon, Monitor } from 'lucide-react';
-import { useTheme, ThemeMode } from '../context/ThemeContext';
+import { Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
-  const options: { mode: ThemeMode; label: string; icon: React.ElementType; colorClass: string }[] = [
-    { mode: 'light', label: 'Light', icon: Sun, colorClass: 'text-amber-500' },
-    { mode: 'system', label: 'System', icon: Monitor, colorClass: 'text-slate-500 dark:text-slate-400' },
-    { mode: 'dark', label: 'Dark', icon: Moon, colorClass: 'text-blue-500 dark:text-blue-400' },
-  ];
-
   return (
-    <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-      {options.map(opt => {
-        const Icon = opt.icon;
-        const isSelected = theme === opt.mode;
-        return (
-          <button
-            key={opt.mode}
-            onClick={() => setTheme(opt.mode)}
-            className={`flex items-center gap-1.5 p-2.5 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black transition-all min-h-[44px] ${
-              isSelected
-                ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs border border-slate-200 dark:border-slate-700'
-                : 'text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white border border-transparent'
-            }`}
-            title={`Set ${opt.label} theme`}
-          >
-            <Icon size={14} className={opt.colorClass} />
-            <span className="hidden sm:inline">{opt.label}</span>
-          </button>
-        );
-      })}
+    <div 
+      className="inline-flex items-center p-1 bg-slate-200/90 dark:bg-slate-800/90 rounded-xl border border-slate-300 dark:border-slate-700 shadow-2xs"
+      role="radiogroup"
+      aria-label="Theme selection"
+    >
+      <button
+        type="button"
+        role="radio"
+        aria-checked={theme === 'light'}
+        onClick={() => setTheme('light')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer min-h-[36px] ${
+          theme === 'light'
+            ? 'bg-white text-amber-700 shadow-xs border border-slate-300 ring-1 ring-amber-500/20'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+        }`}
+        title="Switch to Light Theme"
+      >
+        <Sun size={15} className={theme === 'light' ? 'text-amber-600 fill-amber-500/30' : 'text-slate-500'} />
+        <span>Light</span>
+      </button>
+
+      <button
+        type="button"
+        role="radio"
+        aria-checked={theme === 'dark'}
+        onClick={() => setTheme('dark')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer min-h-[36px] ${
+          theme === 'dark'
+            ? 'bg-slate-900 text-blue-300 shadow-xs border border-slate-700 ring-1 ring-blue-500/30'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+        }`}
+        title="Switch to Dark Theme"
+      >
+        <Moon size={15} className={theme === 'dark' ? 'text-blue-400 fill-blue-500/30' : 'text-slate-500'} />
+        <span>Dark</span>
+      </button>
     </div>
   );
 }
