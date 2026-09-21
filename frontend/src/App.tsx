@@ -54,7 +54,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { caregiver } = useAppContext();
   if (caregiver) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/caregiver" replace />;
   }
   return <>{children}</>;
 };

@@ -59,8 +59,8 @@ async function runOfflineVerification() {
     await page.type('#auth-email', 'pavan@mindmitra.com');
     await page.type('#auth-password', 'mindmitra123');
     await page.click('button[type="submit"]');
-    await page.waitForFunction(() => window.location.pathname === '/home', { timeout: 10000 });
-    console.log('  [PASS] Logged in successfully as Caregiver Pavan Kumar.');
+    await page.waitForFunction(() => window.location.pathname === '/caregiver' || window.location.pathname === '/home', { timeout: 10000 });
+    console.log('  [PASS] Logged in successfully as Caregiver Pavan Kumar (navigated to caregiver portal).');
 
     // Navigate to /activity/memory online
     await page.goto(`${BASE_URL}/activity/memory`, { waitUntil: 'networkidle0' });
@@ -326,7 +326,7 @@ async function runOfflineVerification() {
     await page.type('#auth-email', 'pavan@mindmitra.com');
     await page.type('#auth-password', 'mindmitra123');
     await page.click('button[type="submit"]');
-    await page.waitForFunction(() => window.location.pathname === '/home', { timeout: 10000 });
+    await page.waitForFunction(() => window.location.pathname === '/caregiver' || window.location.pathname === '/home', { timeout: 10000 });
 
     await page.goto(`${BASE_URL}/my-pattern`, { waitUntil: 'networkidle0' });
     const postReloginPattern = await page.evaluate(() => {

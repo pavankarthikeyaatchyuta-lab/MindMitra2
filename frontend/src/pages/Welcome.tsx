@@ -22,7 +22,7 @@ export default function Welcome() {
 
   const handleGetStarted = () => {
     if (caregiver) {
-      navigate('/home');
+      navigate('/caregiver');
     } else {
       navigate('/login');
     }
@@ -52,10 +52,10 @@ export default function Welcome() {
 
             {caregiver ? (
               <button
-                onClick={() => navigate('/home')}
+                onClick={() => navigate('/caregiver')}
                 className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer min-h-[36px] sm:min-h-[40px]"
               >
-                <span>Go to App</span>
+                <span>Caregiver Portal</span>
                 <ArrowRight size={14} />
               </button>
             ) : (
@@ -110,10 +110,10 @@ export default function Welcome() {
         {/* Primary Action Buttons: Both Get Started & Log In Clearly Exposed */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
           <Link
-            to={caregiver ? '/home' : '/register'}
+            to={caregiver ? '/caregiver' : '/register'}
             className="w-full sm:w-auto py-3.5 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-98 transition-all min-h-[48px]"
           >
-            <span>{caregiver ? 'Enter MindMitra App' : 'Get Started'}</span>
+            <span>{caregiver ? 'Enter Caregiver Portal' : 'Get Started'}</span>
             <ArrowRight size={18} />
           </Link>
 

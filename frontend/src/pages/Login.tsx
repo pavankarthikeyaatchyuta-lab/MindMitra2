@@ -88,14 +88,14 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
     if (isRegister) {
       const result = await register(name, email, password);
       if (result.success) {
-        navigate('/home');
+        navigate('/caregiver');
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
     } else {
       const result = await login(email, password);
       if (result.success) {
-        navigate('/home');
+        navigate('/caregiver');
       } else {
         setError(result.error || 'Email or password is incorrect.');
       }
@@ -108,12 +108,12 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
     setLoading(true);
     const result = await login('pavan@mindmitra.com', 'mindmitra123');
     if (result.success) {
-      navigate('/home');
+      navigate('/caregiver');
     } else {
       // Fallback demo account registration if needed
       const regResult = await register('Pavan Kumar', 'pavan@mindmitra.com', 'mindmitra123');
       if (regResult.success) {
-        navigate('/home');
+        navigate('/caregiver');
       } else {
         setError('Could not connect to backend server. Check your connection and try again.');
       }
