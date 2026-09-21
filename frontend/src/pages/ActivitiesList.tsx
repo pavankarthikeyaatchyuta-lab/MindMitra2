@@ -56,6 +56,15 @@ export default function ActivitiesList() {
       icon: '🔍',
       telemetryNote: 'Measures recognition latency, visual scanning pauses, and assisted prompts.',
     },
+    {
+      id: 'pattern',
+      gameType: 'pattern_recall',
+      title: 'Pattern Recall',
+      domain: 'Spatial Attention',
+      description: 'Observe flash sequences and tap in pattern tempo to track sustained attention and motor cadence.',
+      icon: '✨',
+      telemetryNote: 'Measures pattern response tempo, tap cadence variance, and error recovery rate.',
+    },
   ];
 
   const handleSpeakInstruction = (title: string, desc: string) => {

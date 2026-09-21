@@ -123,6 +123,8 @@ function AppContent() {
             <Route path="/connect" element={<Navigate to="/home" replace />} />
             <Route path="/how-it-works" element={<Navigate to="/landing" replace />} />
             <Route path="/methodology" element={<Navigate to="/landing" replace />} />
+            <Route path="/judge-demo" element={<Navigate to="/home" replace />} />
+            <Route path="/demo" element={<Navigate to="/home" replace />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to={caregiver ? "/home" : "/landing"} replace />} />

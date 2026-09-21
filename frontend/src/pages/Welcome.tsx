@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useTranslation } from '../i18n';
 import { useApp } from '../context/AppContext';
 import ThemeToggle from '../components/ThemeToggle';
 import { 
@@ -9,30 +8,21 @@ import {
   Activity, 
   ShieldCheck, 
   Sparkles, 
-  Users, 
-  HeartHandshake, 
   Cpu, 
   TrendingUp, 
   Globe, 
-  Compass,
-  PhoneCall,
-  Mic,
-  Music,
-  Sprout,
-  BookOpen,
-  MessageCircle,
-  Radio,
   Lock,
+  Play,
+  HeartHandshake
 } from 'lucide-react';
 
 export default function Welcome() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
-  const { caregiver } = useApp();
+  const { caregiver, currentUser } = useApp();
 
   const handleGetStarted = () => {
     if (caregiver) {
-      navigate('/profiles');
+      navigate('/home');
     } else {
       navigate('/login');
     }
@@ -41,205 +31,181 @@ export default function Welcome() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
       {/* 1. Global Public Top Navigation */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-purple-100/80 dark:border-slate-800 px-3 sm:px-6 py-3.5 transition-colors">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 transition-colors">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-600 flex items-center justify-center text-white shadow-sm group-hover:opacity-90 transition-opacity">
-              <Brain size={20} />
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs group-hover:bg-blue-700 transition-colors">
+              <Brain size={22} />
             </div>
             <div>
-              <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                 MindMitra
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Cognitive Wellbeing & Community Companion</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
+                Personal Behavioral Memory
+              </span>
             </div>
           </Link>
-
-          <nav className="hidden md:flex items-center gap-6 text-sm font-bold text-slate-700 dark:text-slate-200">
-            <Link to="/personal-pattern" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1">
-              <span>📱 Phone App</span>
-            </Link>
-            <Link to="/judge-demo" className="hover:text-amber-500 transition-colors flex items-center gap-1 text-amber-600 dark:text-amber-400 font-extrabold">
-              <Sparkles size={15} />
-              <span>Judge Demo</span>
-            </Link>
-            <Link to="/office-kit" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1">
-              <span>💻 Office Kit</span>
-            </Link>
-            <Link to="/how-it-works" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">How It Works</Link>
-            <Link to="/methodology" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Architecture & AI</Link>
-          </nav>
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
-            <button
-              onClick={handleGetStarted}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 hover:opacity-95 text-white text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <span>Get Started</span>
-              <ArrowRight size={15} />
-            </button>
+            {caregiver ? (
+              <button
+                onClick={() => navigate('/home')}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>Go to App</span>
+                <ArrowRight size={15} />
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5 transition-all"
+                >
+                  <span>Get Started</span>
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       {/* 2. Hero Section: "The phone learns your pattern." */}
-      <section className="pt-12 pb-16 px-4 sm:px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
+      <section className="pt-12 pb-16 px-4 sm:px-6 max-w-5xl mx-auto flex flex-col items-center text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs font-black uppercase tracking-wider mb-6 shadow-xs">
           <Sparkles size={14} className="text-blue-600 dark:text-blue-400" />
-          <span>iQOO Hackathon 2026 • On-Device Adaptive Intelligence</span>
+          <span>iQOO Hackathon 2026 • Phone-First Personal Behavioral Memory</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.12] max-w-4xl">
-          The phone learns <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">your personal pattern.</span>
+          Your phone learns <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">what normal looks like for you.</span>
         </h1>
 
         <p className="mt-5 text-base sm:text-xl text-slate-700 dark:text-slate-200 max-w-3xl leading-relaxed font-medium">
-          MindMitra does not compare an older adult to a population leaderboard. Through genuine touch cadence, voice pauses, and interaction latency, the phone learns what normal interaction looks like for that person — and adapts in real time directly on device.
+          MindMitra does not compare older adults to arbitrary population leaderboards. Through calm daily activities, the phone observes fine-grained touch latency, tap cadence, and hesitation intervals to establish an individual behavioral baseline — adapting directly on-device in real time.
         </p>
 
-        {/* The Killer Loop Visual Bar */}
-        <div className="my-8 py-3 px-5 rounded-2xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-sm max-w-3xl w-full flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200">
-          <span className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">1. SENSE</span>
-          <span>→</span>
-          <span className="px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300">2. ON-DEVICE ML</span>
-          <span>→</span>
-          <span className="px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">3. PERSONAL BASELINE</span>
-          <span>→</span>
-          <span className="px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">4. ADAPT</span>
-          <span>→</span>
-          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">5. OFFICE KIT</span>
+        {/* The Closed Behavioral Loop */}
+        <div className="my-8 py-3 px-5 rounded-2xl bg-white/90 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 shadow-sm max-w-3xl w-full flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs font-extrabold text-slate-800 dark:text-slate-200">
+          <span className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">1. OBSERVE</span>
+          <span className="text-slate-400">→</span>
+          <span className="px-3 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300">2. LEARN</span>
+          <span className="text-slate-400">→</span>
+          <span className="px-3 py-1 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">3. REMEMBER</span>
+          <span className="text-slate-400">→</span>
+          <span className="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">4. DETECT</span>
+          <span className="text-slate-400">→</span>
+          <span className="px-3 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">5. ADAPT</span>
         </div>
 
+        {/* Primary Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
-          <Link
-            to="/personal-pattern"
-            className="w-full sm:w-auto py-3.5 px-7 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all min-h-[48px]"
-          >
-            <span>📱 Start Personal Pattern</span>
-            <ArrowRight size={16} />
-          </Link>
-
-          <Link
-            to="/office-kit"
-            className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 transition-all min-h-[48px]"
-          >
-            <span>💻 Open Office Kit</span>
-          </Link>
-
-          <Link
-            to="/judge-demo"
-            className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all min-h-[48px]"
-          >
-            <Sparkles size={16} />
-            <span>Judge Demo</span>
-          </Link>
-        </div>
-
-        {/* Caregiver Portal Link */}
-        <div className="mt-8 inline-flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span>Are you a registered caregiver?</span>
           <button
             onClick={handleGetStarted}
-            className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+            className="w-full sm:w-auto py-3.5 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all min-h-[48px] cursor-pointer"
           >
-            Caregiver Dashboard & Profiles →
+            <span>{caregiver ? 'Enter MindMitra App' : 'Get Started'}</span>
+            <ArrowRight size={18} />
           </button>
+
+          <Link
+            to={caregiver ? '/caregiver' : '/login'}
+            className="w-full sm:w-auto py-3.5 px-7 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 transition-all min-h-[48px]"
+          >
+            <HeartHandshake size={18} className="text-indigo-600 dark:text-indigo-400" />
+            <span>Caregiver Portal</span>
+          </Link>
         </div>
       </section>
 
       {/* 3. CORE ARCHITECTURE: SENSE -> LEARN -> ADAPT -> EXPLAIN */}
-      <section className="py-14 px-4 sm:px-6 max-w-7xl mx-auto w-full border-t border-slate-200/80 dark:border-slate-800/80">
+      <section className="py-12 px-4 sm:px-6 max-w-6xl mx-auto w-full border-t border-slate-200 dark:border-slate-800">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
             <Activity size={13} />
-            <span>The MindMitra Architecture</span>
+            <span>Personal Behavioral Memory</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            Sense • Learn • Adapt • Explain
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            How Your Phone Understands Your Pattern
           </h2>
           <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1.5 max-w-2xl mx-auto">
-            A privacy-first, on-device cognitive companion designed to learn each individual's personal behavioral baseline.
+            A privacy-first, on-device cognitive companion designed to respect the dignity and individuality of each person.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-5">
           {[
             {
-              id: 'sense',
               step: '01',
-              title: 'SENSE',
-              subtitle: 'Touch • Voice • Camera',
-              desc: 'Genuinely measures touch cadence, hesitation intervals, and response latencies. Zero raw audio or photos leave the phone.',
+              title: 'OBSERVE',
+              subtitle: 'Micro-Behavioral Signals',
+              desc: 'Genuinely measures touch latency, tap cadence variance, and hesitation intervals. Zero audio or camera media leaves the device.',
               icon: Brain,
               tag: 'Real Behavioral Telemetry',
-              accentBg: 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-800/60',
+              accentBg: 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-800/60',
               iconBg: 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300',
-              stepTag: 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800',
-              subTitleColor: 'text-blue-700 dark:text-blue-400',
             },
             {
-              id: 'learn',
               step: '02',
               title: 'LEARN',
-              subtitle: 'Personal Baseline Engine',
-              desc: 'Learns what normal looks like for this specific individual across 3+ sessions. Does not compare against universal leaderboards.',
+              subtitle: 'Honest Personal Baseline',
+              desc: 'Requires 3 completed sessions to calculate individual median ranges. Single-day fluctuations never trigger false alarms.',
               icon: TrendingUp,
-              tag: 'Personal Median Baseline',
-              accentBg: 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-200/80 dark:border-purple-800/60',
-              iconBg: 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300',
-              stepTag: 'bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800',
-              subTitleColor: 'text-purple-700 dark:text-purple-400',
+              tag: 'MAD Robust Dispersion',
+              accentBg: 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-200/80 dark:border-indigo-800/60',
+              iconBg: 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300',
             },
             {
-              id: 'adapt',
               step: '03',
+              title: 'REMEMBER',
+              subtitle: 'Local-First Storage',
+              desc: 'Persists baseline medians securely in client-side storage (IndexedDB). Survives phone reloads, restarts, and airplane mode.',
+              icon: Lock,
+              tag: '100% Offline Persistence',
+              accentBg: 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-800/60',
+              iconBg: 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300',
+            },
+            {
+              step: '04',
               title: 'ADAPT',
               subtitle: 'On-Device Machine Learning',
-              desc: 'A real 35-tree Random Forest runs locally in phone memory (<0.1ms in V8), dynamically adjusting difficulty (1–5) in real time.',
+              desc: 'A 35-tree Random Forest executes locally in < 2ms with zero network calls, dynamically calibrating activity pacing and reassurance.',
               icon: Cpu,
-              tag: '100% Offline Inference',
-              accentBg: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60',
-              iconBg: 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300',
-              stepTag: 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
-              subTitleColor: 'text-amber-700 dark:text-amber-400',
-            },
-            {
-              id: 'explain',
-              step: '04',
-              title: 'EXPLAIN',
-              subtitle: 'Caregiver Office Kit',
-              desc: 'Synchronizes structured session summaries to laptop in ~150ms without page reload, answering why a deviation occurred.',
-              icon: HeartHandshake,
-              tag: 'Caregiver Intelligence Layer',
-              accentBg: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-800/60',
+              tag: 'Sub-2ms Local Inference',
+              accentBg: 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/60',
               iconBg: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300',
-              stepTag: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-              subTitleColor: 'text-emerald-700 dark:text-emerald-400',
             },
           ].map((item) => {
             const Icon = item.icon;
             return (
               <div
-                key={item.id}
-                className={`card p-6 flex flex-col justify-between ${item.accentBg}`}
+                key={item.step}
+                className={`card p-5 sm:p-6 flex flex-col justify-between ${item.accentBg} rounded-2xl border`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`text-xs font-black px-2.5 py-1 rounded-md border ${item.stepTag}`}>
+                    <span className="text-xs font-black px-2.5 py-1 rounded-md bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                       STEP {item.step}
                     </span>
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.iconBg}`}>
                       <Icon size={20} />
                     </div>
                   </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-1">{item.title}</h3>
-                  <h4 className={`text-xs font-bold ${item.subTitleColor} mb-2`}>{item.subtitle}</h4>
-                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-medium leading-relaxed">{item.desc}</p>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white mb-0.5">{item.title}</h3>
+                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{item.subtitle}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{item.desc}</p>
                 </div>
-                <div className="mt-5 pt-3 border-t border-slate-200/80 dark:border-slate-800/80">
-                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 font-mono">{item.tag}</span>
+                <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">{item.tag}</span>
                 </div>
               </div>
             );
@@ -247,64 +213,64 @@ export default function Welcome() {
         </div>
       </section>
 
-      {/* 5. 4 Cognitive Games Preview */}
-      <section className="py-14 px-4 sm:px-6 max-w-7xl mx-auto w-full">
+      {/* 4. Four Cognitive Activities */}
+      <section className="py-12 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         <div className="text-center mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">Four Evidence-Informed Cognitive Activities</h2>
-          <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1.5">Targeting short-term memory, sequence recall, facial recognition, and pattern attention</p>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Four Evidence-Informed Activities
+          </h2>
+          <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1.5">
+            Gentle, dignified exercises measuring working memory, sequence recall, visual recognition, and motor cadence.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {[
             {
               title: 'Memory Match',
-              domain: 'Working & Short-Term Memory',
-              desc: 'Match cards with everyday & familiar symbols to stimulate recall.',
-              emoji: '🧠',
+              domain: 'Working Memory',
+              desc: 'Turn over cards to find matching household and cultural items at your own pace.',
+              emoji: '🧩',
               badge: 'Visual Memory',
               iconBg: 'bg-purple-100 dark:bg-purple-950/60 border-purple-200 dark:border-purple-900',
-              accentColor: 'text-purple-700 dark:text-purple-400',
             },
             {
               title: 'Daily Routine Recall',
-              domain: 'Sequential & Episodic Memory',
-              desc: 'Reconstruct familiar daily activities and morning rituals in sequence.',
+              domain: 'Sequential Memory',
+              desc: 'Reconstruct familiar daily sequences and morning rituals in natural chronological order.',
               emoji: '📋',
-              badge: 'Logical Sequencing',
+              badge: 'Procedural Logic',
               iconBg: 'bg-indigo-100 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-900',
-              accentColor: 'text-indigo-700 dark:text-indigo-400',
             },
             {
-              title: 'Camera-Assisted Familiar Recall',
-              domain: 'Visual & Familiar Memory',
-              desc: 'Identify everyday objects and caregiver-uploaded family member photos with self-confirmed recall.',
-              emoji: '📷',
-              badge: 'Self-Confirmed Recall',
+              title: 'Visual & Familiar Recall',
+              domain: 'Visual & Distractor Recall',
+              desc: 'Identify familiar items and verified family photos with safe camera or photo card fallback.',
+              emoji: '🔍',
+              badge: 'Familiarity Memory',
               iconBg: 'bg-cyan-100 dark:bg-cyan-950/60 border-cyan-200 dark:border-cyan-900',
-              accentColor: 'text-cyan-700 dark:text-cyan-400',
             },
             {
               title: 'Pattern Recall',
-              domain: 'Pattern Recognition & Attention',
-              desc: 'Observe symbol patterns and test sustained attention and recall speed.',
+              domain: 'Spatial Attention',
+              desc: 'Observe flash sequences and tap cadence to track sustained attention and motor tempo.',
               emoji: '✨',
-              badge: 'Focus & Attention',
+              badge: 'Motor Cadence',
               iconBg: 'bg-pink-100 dark:bg-pink-950/60 border-pink-200 dark:border-pink-900',
-              accentColor: 'text-pink-700 dark:text-pink-400',
             },
-          ].map((game) => (
-            <div key={game.title} className="card p-6 flex flex-col justify-between">
+          ].map((act) => (
+            <div key={act.title} className="card p-5 sm:p-6 flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-xs">
               <div>
-                <div className={`w-12 h-12 rounded-xl border flex items-center justify-center text-2xl mb-4 ${game.iconBg}`}>
-                  {game.emoji}
+                <div className={`w-12 h-12 rounded-xl border flex items-center justify-center text-2xl mb-4 ${act.iconBg}`}>
+                  {act.emoji}
                 </div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{game.title}</h3>
-                <p className={`text-xs font-bold ${game.accentColor} mt-0.5`}>{game.domain}</p>
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-medium mt-2 leading-relaxed">{game.desc}</p>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">{act.title}</h3>
+                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5">{act.domain}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-2 leading-relaxed">{act.desc}</p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                  {game.badge}
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  {act.badge}
                 </span>
               </div>
             </div>
@@ -312,43 +278,43 @@ export default function Welcome() {
         </div>
       </section>
 
-      {/* 6. Multilingual & Medical Guardrails */}
-      <section className="py-12 px-4 sm:px-6 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="card p-6 flex items-start gap-4 bg-blue-50/60 dark:bg-blue-950/20 border-blue-200/70 dark:border-blue-900/50">
+      {/* 5. Multilingual & Medical Guardrails */}
+      <section className="py-10 px-4 sm:px-6 max-w-6xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="card p-6 flex items-start gap-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/70 dark:border-blue-900/50 rounded-2xl">
             <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-400 shrink-0">
               <Globe size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Multilingual & Native Voice Support</h3>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 mt-1 leading-relaxed font-medium">
-                Full localized UI and Text-to-Speech voice guidance in <strong>English</strong>, <strong>Hindi (हिंदी)</strong>, and <strong>Telugu (తెలుగు)</strong> for elderly comfort and independence.
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Multilingual Indic Voice Support</h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed font-medium">
+                Spoken guidance, synchronized subtitles, and audio explanations in <strong>Telugu (తెలుగు)</strong>, <strong>Hindi (हिंदी)</strong>, and <strong>English</strong> for elder comfort and independence.
               </p>
             </div>
           </div>
 
-          <div className="card p-6 flex items-start gap-4 bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-900/50">
+          <div className="card p-6 flex items-start gap-4 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/50 rounded-2xl">
             <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 shrink-0">
               <ShieldCheck size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Ethical & Medical Guardrails</h3>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 mt-1 leading-relaxed font-medium">
-                MindMitra is an assistive cognitive companion and does NOT diagnose clinical dementia or disease. All insights are behavioral observations intended to support families.
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Ethical & Non-Clinical Guardrails</h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed font-medium">
+                MindMitra is an assistive behavioral wellness companion and does NOT diagnose clinical dementia or disease. All insights are non-clinical behavioral observations intended to support families.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 py-8 px-4 sm:px-6 text-center text-xs text-slate-600 dark:text-slate-300 font-medium backdrop-blur-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p>© {new Date().getFullYear()} MindMitra — AI Companion for Cognitive Wellbeing.</p>
-          <div className="flex items-center gap-4 font-bold">
-            <Link to="/how-it-works" className="hover:text-purple-600 dark:hover:text-purple-400">How It Works</Link>
-            <Link to="/methodology" className="hover:text-purple-600 dark:hover:text-purple-400">Methodology</Link>
-            <Link to="/demo" className="hover:text-purple-600 dark:hover:text-purple-400">Demo</Link>
+      {/* 6. Clean Accessible Footer */}
+      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 py-6 px-4 sm:px-6 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+          <p>© {new Date().getFullYear()} MindMitra • Personal Behavioral Memory System</p>
+          <div className="flex items-center gap-4 text-xs font-bold">
+            <Link to="/home" className="hover:text-blue-600 dark:hover:text-blue-400">Home</Link>
+            <Link to="/activities" className="hover:text-blue-600 dark:hover:text-blue-400">Activities</Link>
+            <Link to="/caregiver" className="hover:text-blue-600 dark:hover:text-blue-400">Caregiver</Link>
           </div>
         </div>
       </footer>

@@ -86,12 +86,12 @@ export default function CaregiverAccountMenu() {
           <button
             onClick={() => {
               setIsOpen(false);
-              navigate('/profiles');
+              navigate('/caregiver');
             }}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all font-medium"
           >
             <Users size={15} className="text-blue-600 dark:text-blue-400" />
-            <span>Profile Selection</span>
+            <span>Cared-For Individuals</span>
           </button>
 
           <button

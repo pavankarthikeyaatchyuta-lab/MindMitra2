@@ -172,11 +172,11 @@ export default function OfficeKitView() {
 
         <div className="flex items-center gap-3">
           <Link
-            to="/personal-pattern"
+            to="/home"
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-sm"
           >
             <Smartphone size={14} />
-            <span>Open Phone App</span>
+            <span>View as Individual</span>
           </Link>
           <ThemeToggle />
           <CaregiverAccountMenu />
