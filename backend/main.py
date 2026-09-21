@@ -1207,9 +1207,7 @@ def record_community_event(req: RecordCommunityEventRequest, current=Depends(get
         conn.commit()
         return {"id": c.lastrowid, "timestamp": now}
 
-# --- ENDPOINTS: CONNECT MODE & TRUSTED CONNECTIONS ---
-
-# --- ENDPOINTS: CONNECT MODE & TRUSTED CONNECTIONS ---
+# --- ENDPOINTS: TRUSTED FAMILY CONNECTIONS ---
 
 @app.get("/api/connections/profile/{profile_id}")
 @app.get("/connections/profile/{profile_id}")

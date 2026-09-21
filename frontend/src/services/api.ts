@@ -459,7 +459,7 @@ export const api = {
   recordCommunityEvent: (event: { community_session_id: number; profile_id?: number; activity_key: string; event_type: string; data?: any }) =>
     fetchJSON<any>('/community/events', { method: 'POST', body: JSON.stringify(event) }),
 
-  // Connect Mode & Trusted Connections
+  // Trusted Family Connections
   getProfileConnections: (profileId: number) =>
     fetchJSON<TrustedConnection[]>(`/connections/profile/${profileId}`, {}, `connections_${profileId}`),
   addTrustedConnection: (conn: {
