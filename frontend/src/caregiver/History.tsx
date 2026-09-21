@@ -95,7 +95,7 @@ export default function History() {
     const t = (type || '').toLowerCase();
     if (t.includes('memory')) return 'Memory Match (Short-Term Memory)';
     if (t.includes('routine')) return 'Daily Routine Recall (Sequential Memory)';
-    if (t.includes('recognition')) return 'Object & Visual Recall (Visual)';
+    if (t.includes('recognition')) return 'Visual Recall (Visual)';
     if (t.includes('pattern')) return 'Pattern Recall (Attention)';
     return type;
   };

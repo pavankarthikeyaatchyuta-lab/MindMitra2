@@ -32,8 +32,8 @@ const GAME_TYPES: Record<string, GameType> = {
 const NEXT_GAME: Record<string, { id: string; title: string }> = {
   memory: { id: 'routine', title: 'Daily Routine Recall' },
   memory_match: { id: 'routine', title: 'Daily Routine Recall' },
-  routine: { id: 'recognition', title: 'Object & Visual Recall' },
-  daily_routine: { id: 'recognition', title: 'Object & Visual Recall' },
+  routine: { id: 'recognition', title: 'Visual Recall' },
+  daily_routine: { id: 'recognition', title: 'Visual Recall' },
   recognition: { id: 'pattern', title: 'Pattern Recall' },
   object_recognition: { id: 'pattern', title: 'Pattern Recall' },
   pattern: { id: 'complete', title: 'Session Complete' },

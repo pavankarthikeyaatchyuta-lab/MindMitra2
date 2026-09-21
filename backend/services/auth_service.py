@@ -95,11 +95,11 @@ def verify_profile_ownership(conn, caregiver_id: int, profile_id: int) -> bool:
     if row:
         owner_id = row["caregiver_id"] if isinstance(row, dict) or hasattr(row, "keys") else row[0]
         return int(owner_id) == int(caregiver_id)
-    # Check users table fallback for demo / legacy profiles
+    # Check users table fallback for demo / legacy profiles (IDs 1, 2, 3 only)
     c.execute("SELECT id FROM users WHERE id = ?", (profile_id,))
     user_row = c.fetchone()
     if user_row:
-        return int(caregiver_id) == 1
+        return int(caregiver_id) == 1 and int(profile_id) in (1, 2, 3)
     return False
 
 

@@ -362,15 +362,25 @@ def init_db():
                 except Exception as alter_err:
                     logger.warning(f"Failed to add column {col} to {tbl}: {alter_err}")
 
-        # Ensure default demo caregiver exists
-        c.execute("SELECT COUNT(*) as count FROM caregivers WHERE email = 'pavan@mindmitra.com'")
-        if c.fetchone()["count"] == 0:
-            now = datetime.datetime.now().isoformat()
-            pwd_hash = hash_password("mindmitra123")
-            c.execute("""
-                INSERT INTO caregivers (name, email, password_hash, created_at, updated_at, active)
-                VALUES ('Pavan Kumar', 'pavan@mindmitra.com', ?, ?, ?, 1)
-            """, (pwd_hash, now, now))
+        # Environment-aware demo account seeding (only in non-production or when explicitly configured)
+        app_env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+        is_production = app_env in ("production", "prod")
+        allow_demo_seed = os.getenv("ALLOW_DEMO_SEED", "false" if is_production else "true").lower() == "true"
+        demo_email = os.getenv("DEMO_CAREGIVER_EMAIL", "pavan@mindmitra.com")
+        demo_password = os.getenv("DEMO_CAREGIVER_PASSWORD", "mindmitra123" if not is_production else None)
+
+        if not is_production and allow_demo_seed and demo_password:
+            c.execute("SELECT COUNT(*) as count FROM caregivers WHERE email = ?", (demo_email,))
+            if c.fetchone()["count"] == 0:
+                now = datetime.datetime.now().isoformat()
+                pwd_hash = hash_password(demo_password)
+                c.execute("""
+                    INSERT INTO caregivers (name, email, password_hash, created_at, updated_at, active)
+                    VALUES ('Pavan Kumar', ?, ?, ?, ?, 1)
+                """, (demo_email, pwd_hash, now, now))
+                logger.info(f"[DB] Initialized local development demo caregiver: {demo_email}")
+        elif is_production:
+            logger.info("[DB] Production environment detected: hardcoded demo accounts disabled.")
 
         sync_postgres_sequences(conn)
         conn.commit()
@@ -399,13 +409,14 @@ def get_current_caregiver(authorization: Optional[str] = Header(None)) -> Option
 
 def check_caregiver_profile_access(conn, current: Optional[Dict[str, Any]], profile_id: int):
     """
-    Verifies that if current user is authenticated, the requested profile_id belongs to that user/caregiver.
+    Verifies that the requested profile_id belongs to the authenticated caregiver.
+    Raises HTTPException(401) if unauthenticated.
     Raises HTTPException(403) if access is forbidden.
     """
     if not current:
-        return
+        raise HTTPException(status_code=401, detail="Authentication required")
     caregiver_id = current.get("caregiver_id")
-    if caregiver_id and not verify_profile_ownership(conn, caregiver_id, profile_id):
+    if not caregiver_id or not verify_profile_ownership(conn, caregiver_id, profile_id):
         raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
 
 # --- MODELS ---
@@ -677,12 +688,16 @@ def _get_profiles_for_caregiver(caregiver_id: int, include_archived: bool = Fals
 
 @app.get("/api/profiles")
 def list_profiles(include_archived: bool = False, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     return _get_profiles_for_caregiver(caregiver_id, include_archived)
 
 @app.get("/api/profiles/archived")
 def list_archived_profiles(current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("""
@@ -695,7 +710,9 @@ def list_archived_profiles(current=Depends(get_current_caregiver)):
 
 @app.post("/api/profiles")
 def create_elderly_profile(p: ProfileCreate, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     now = datetime.datetime.now().isoformat()
     with get_db() as conn:
         try:
@@ -729,7 +746,9 @@ def create_elderly_profile(p: ProfileCreate, current=Depends(get_current_caregiv
 
 @app.get("/api/profiles/{id}")
 def get_profile(id: int, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT id, caregiver_id, name as display_name, name, age, preferred_language, voice_enabled, created_at, COALESCE(status, 'active') as status FROM elderly_profiles WHERE id = ? AND (active IS TRUE OR active IS NULL)", (id,))
@@ -741,7 +760,7 @@ def get_profile(id: int, current=Depends(get_current_caregiver)):
             raise HTTPException(status_code=404, detail="Profile not found")
         
         # Verify ownership
-        if current and int(row["caregiver_id"]) != int(caregiver_id):
+        if int(row["caregiver_id"]) != int(caregiver_id):
             raise HTTPException(status_code=403, detail="Unauthorized: Profile belongs to another caregiver account.")
 
         return dict(row)
@@ -749,7 +768,9 @@ def get_profile(id: int, current=Depends(get_current_caregiver)):
 @app.put("/api/profiles/{id}")
 @app.patch("/api/profiles/{id}")
 def update_profile(id: int, p: ProfileUpdate, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM elderly_profiles WHERE id = ? AND (active IS TRUE OR active IS NULL)", (id,))
@@ -757,7 +778,7 @@ def update_profile(id: int, p: ProfileUpdate, current=Depends(get_current_caregi
         if not existing:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        if current and int(existing["caregiver_id"]) != int(caregiver_id):
+        if int(existing["caregiver_id"]) != int(caregiver_id):
             raise HTTPException(status_code=403, detail="Unauthorized: Profile belongs to another caregiver account.")
 
         now = datetime.datetime.now().isoformat()
@@ -789,7 +810,9 @@ def update_profile(id: int, p: ProfileUpdate, current=Depends(get_current_caregi
 
 @app.post("/api/profiles/{id}/archive")
 def archive_profile(id: int, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM elderly_profiles WHERE id = ? AND (active IS TRUE OR active IS NULL)", (id,))
@@ -797,7 +820,7 @@ def archive_profile(id: int, current=Depends(get_current_caregiver)):
         if not existing:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        if current and int(existing["caregiver_id"]) != int(caregiver_id):
+        if int(existing["caregiver_id"]) != int(caregiver_id):
             raise HTTPException(status_code=403, detail="Unauthorized: Cannot archive a profile owned by another caregiver.")
 
         c.execute("UPDATE elderly_profiles SET status = 'archived', updated_at = ? WHERE id = ?", (datetime.datetime.now().isoformat(), id))
@@ -806,7 +829,9 @@ def archive_profile(id: int, current=Depends(get_current_caregiver)):
 
 @app.post("/api/profiles/{id}/restore")
 def restore_profile(id: int, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM elderly_profiles WHERE id = ? AND (active IS TRUE OR active IS NULL)", (id,))
@@ -814,7 +839,7 @@ def restore_profile(id: int, current=Depends(get_current_caregiver)):
         if not existing:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        if current and int(existing["caregiver_id"]) != int(caregiver_id):
+        if int(existing["caregiver_id"]) != int(caregiver_id):
             raise HTTPException(status_code=403, detail="Unauthorized: Cannot restore a profile owned by another caregiver.")
 
         c.execute("UPDATE elderly_profiles SET status = 'active', updated_at = ? WHERE id = ?", (datetime.datetime.now().isoformat(), id))
@@ -823,7 +848,9 @@ def restore_profile(id: int, current=Depends(get_current_caregiver)):
 
 @app.delete("/api/profiles/{id}")
 def delete_profile_permanently(id: int, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM elderly_profiles WHERE id = ?", (id,))
@@ -831,7 +858,7 @@ def delete_profile_permanently(id: int, current=Depends(get_current_caregiver)):
         if not existing:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        if current and int(existing["caregiver_id"]) != int(caregiver_id):
+        if int(existing["caregiver_id"]) != int(caregiver_id):
             raise HTTPException(status_code=403, detail="Unauthorized: Cannot delete a profile owned by another caregiver.")
 
         # Cascading deletion of all profile-scoped data
@@ -849,7 +876,9 @@ def delete_profile_permanently(id: int, current=Depends(get_current_caregiver)):
 
 @app.get("/api/profiles/{id}/export")
 def export_profile_data(id: int, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
+    if not current:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    caregiver_id = current["caregiver_id"]
     with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM elderly_profiles WHERE id = ?", (id,))
@@ -857,8 +886,8 @@ def export_profile_data(id: int, current=Depends(get_current_caregiver)):
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        if current and int(profile["caregiver_id"]) != int(caregiver_id):
-            raise HTTPException(status_code=403, detail="Unauthorized: Cannot export data of another caregiver's profile.")
+        if int(profile["caregiver_id"]) != int(caregiver_id):
+            raise HTTPException(status_code=403, detail="Unauthorized: Cannot export a profile owned by another caregiver.")
 
         # Load profile-scoped data
         c.execute("SELECT * FROM sessions WHERE user_id = ?", (id,))
@@ -1792,8 +1821,7 @@ def get_baseline(user_id: int, game_type: str, current=Depends(get_current_careg
 @app.get("/api/analytics/trends/{user_id}")
 def get_trends(user_id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
-        if current and not verify_profile_ownership(conn, current["caregiver_id"], user_id):
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("""
             SELECT g.* FROM game_sessions g
@@ -1880,12 +1908,8 @@ async def get_all_insights(user_id: int, current=Depends(get_current_caregiver))
 
 @app.get("/api/familiar-people/{user_id}")
 def list_familiar_people(user_id: int, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
-    logger.info(f"[GET /api/familiar-people/{user_id}] profile_id={user_id} caregiver_id={caregiver_id}")
     with get_db() as conn:
-        if current and not verify_profile_ownership(conn, caregiver_id, user_id):
-            logger.warning(f"[GET /api/familiar-people/{user_id}] 403 Forbidden: caregiver_id={caregiver_id} denied access to profile_id={user_id}")
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("SELECT * FROM familiar_people WHERE user_id = ? ORDER BY id ASC", (user_id,))
         rows = [dict(row) for row in c.fetchall()]
@@ -1893,13 +1917,8 @@ def list_familiar_people(user_id: int, current=Depends(get_current_caregiver)):
 
 @app.post("/api/familiar-people")
 def add_familiar_person(fp: FamiliarPersonCreate, current=Depends(get_current_caregiver)):
-    caregiver_id = current["caregiver_id"] if current else 1
-    logger.info(f"[POST /api/familiar-people] profile_id={fp.user_id} caregiver_id={caregiver_id} name='{fp.name}'")
     with get_db() as conn:
-        if current and not verify_profile_ownership(conn, caregiver_id, fp.user_id):
-            logger.warning(f"[POST /api/familiar-people] 403 Forbidden: caregiver_id={caregiver_id} denied access to profile_id={fp.user_id}")
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
-        
+        check_caregiver_profile_access(conn, current, fp.user_id)
         c = conn.cursor()
         # Verify profile exists
         c.execute("SELECT id FROM elderly_profiles WHERE id = ?", (fp.user_id,))
@@ -1951,9 +1970,7 @@ def update_familiar_person(id: int, fp: FamiliarPersonUpdate, current=Depends(ge
             raise HTTPException(status_code=404, detail="Familiar person not found")
 
         user_id = existing["user_id"]
-        if current and not verify_profile_ownership(conn, caregiver_id, user_id):
-            logger.warning(f"[PUT /api/familiar-people/{id}] 403 Forbidden: caregiver_id={caregiver_id} denied access to profile_id={user_id}")
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, user_id)
 
         new_name = fp.name.strip() if fp.name is not None else existing["name"]
         new_rel = fp.relationship.strip() if fp.relationship is not None else existing["relationship"]
@@ -1990,9 +2007,7 @@ def delete_familiar_person(id: int, current=Depends(get_current_caregiver)):
         row = c.fetchone()
         if not row:
             return {"status": "deleted"}
-        if current and not verify_profile_ownership(conn, caregiver_id, row["user_id"]):
-            logger.warning(f"[DELETE /api/familiar-people/{id}] 403 Forbidden: caregiver_id={caregiver_id} denied access to profile_id={row['user_id']}")
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, row["user_id"])
         try:
             c.execute("DELETE FROM familiar_people WHERE id = ?", (id,))
             conn.commit()
@@ -2047,8 +2062,7 @@ async def generate_cloud_tts(req: TTSRequest):
 @app.get("/api/reminders/{user_id}")
 def list_reminders(user_id: int, current=Depends(get_current_caregiver)):
     with get_db() as conn:
-        if current and not verify_profile_ownership(conn, current["caregiver_id"], user_id):
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, user_id)
         c = conn.cursor()
         c.execute("SELECT * FROM reminders WHERE user_id = ? ORDER BY id ASC", (user_id,))
         return [dict(row) for row in c.fetchall()]
@@ -2056,8 +2070,7 @@ def list_reminders(user_id: int, current=Depends(get_current_caregiver)):
 @app.post("/api/reminders")
 def create_reminder(rem: ReminderModel, current=Depends(get_current_caregiver)):
     with get_db() as conn:
-        if current and not verify_profile_ownership(conn, current["caregiver_id"], rem.user_id):
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, rem.user_id)
         c = conn.cursor()
         c.execute("""
             INSERT INTO reminders (user_id, type, title, time, repeat_pattern, enabled, created_at)
@@ -2069,8 +2082,7 @@ def create_reminder(rem: ReminderModel, current=Depends(get_current_caregiver)):
 @app.put("/api/reminders/{id}")
 def update_reminder(id: int, rem: ReminderModel, current=Depends(get_current_caregiver)):
     with get_db() as conn:
-        if current and not verify_profile_ownership(conn, current["caregiver_id"], rem.user_id):
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, rem.user_id)
         c = conn.cursor()
         c.execute("""
             UPDATE reminders
@@ -2088,8 +2100,7 @@ def delete_reminder(id: int, current=Depends(get_current_caregiver)):
         row = c.fetchone()
         if not row:
             return {"status": "deleted"}
-        if current and not verify_profile_ownership(conn, current["caregiver_id"], row["user_id"]):
-            raise HTTPException(status_code=403, detail="Forbidden: Access denied to another caregiver's profile")
+        check_caregiver_profile_access(conn, current, row["user_id"])
         c.execute("DELETE FROM reminders WHERE id = ?", (id,))
         conn.commit()
         return {"status": "deleted"}

@@ -66,7 +66,7 @@ MindMitra is **not** primarily a game application. The daily activities are cont
 2. **LEARN**: Builds an individual behavioral baseline over a **minimum of 3 calibration sessions**.
 3. **REMEMBER**: Persists the baseline and session history in secure client-side storage (IndexedDB + localStorage) that survives app restart, page reloads, and logout.
 4. **DETECT**: Employs **Median Absolute Deviation (MAD)** to detect genuine statistical drift relative to the *user's own normal* — never against arbitrary demographic percentiles.
-5. **ADAPT**: A client-side **35-tree Random Forest ensemble** evaluates behavioral features directly on the device in **< 2 ms** to adapt activity complexity, reassurance, and guidance without cloud round-trips.
+5. **ADAPT**: A client-side **35-tree Random Forest ensemble** evaluates behavioral features directly on the device with a **measured local ML inference benchmark of < 1 ms** (pure decision tree traversal benchmark; distinct from total session processing time) to adapt activity complexity, reassurance, and guidance without cloud round-trips.
 
 ---
 
@@ -115,18 +115,18 @@ To deliver a reliable, phone-first product for the iQOO Hackathon, the codebase 
 
 ### ✅ Core Features Preserved & Hardened
 - **Personal Behavioral Memory Engine**: Complete `OBSERVE` $\to$ `LEARN` $\to$ `REMEMBER` $\to$ `DETECT` $\to$ `ADAPT` pipeline.
-- **On-Device 35-Tree Random Forest**: Sub-2ms local execution with **0.00% disagreement** against reference scikit-learn model.
+- **On-Device 35-Tree Random Forest**: Measured local ML inference benchmark of < 1 ms (pure tree traversal benchmark; distinct from total session processing time) with **0.00% disagreement** against reference scikit-learn model.
 - **Honest MAD Personal Baseline**: Strict 3-session calibration requirement with outlier-resilient dispersion; single-session fluctuations do not trigger false deviations.
 - **Four Core Cognitive Activities**:
   1. 🧠 **Memory Match**: Working memory & visual retention
   2. 📋 **Daily Routine Recall**: Procedural sequencing & chronological logic
-  3. 🔍 **Visual & Object Recall**: Distractor discrimination with verified family photos
+  3. 🔍 **Visual Recall**: Distractor discrimination with verified family photos or standard item cards (safe camera/photo fallback, zero false face-recognition claims)
   4. ✨ **Pattern Recall**: Spatial working memory & tap cadence
 - **Native Multilingual Voice**: Telugu (`te-IN`), Hindi (`hi-IN`), and English (`en-US`) with synchronized subtitle banners, "Listen Again", "Help", and spoken audio summaries.
 - **Visual Recall Camera & Card Fallback**: Safe `getUserMedia` handling with clean photo card fallback when camera permission is denied or unavailable.
 - **Caregiver Workspace & Office Kit Live Bridge**: Cross-device telemetry streaming from phone to laptop dashboard in $\sim 150\text{ms}$.
-- **Local-First & Airplane Mode**: IndexedDB persistence ensuring 100% offline gameplay, local telemetry caching, and local baseline evaluation.
-- **Strict Multi-User Isolation**: User A (Rajesh) and User B (Sunita) maintain completely isolated baselines and histories.
+- **Offline Core Reliability**: Core activities and behavioral intelligence work offline without HTTP requests. Authentication, cloud sync, and remote caregiver operations utilize connectivity when available.
+- **Strict Multi-User Isolation**: User A and User B maintain completely isolated baselines, sessions, and histories (enforced via DB ownership verification with 401/403 protection).
 - **Persistent History on Logout**: Logging out purges active credentials and session tokens, but preserves persistent historical data.
 
 ### ❌ Speculative & Unrelated Features Removed
@@ -207,9 +207,9 @@ MindMitra uses purpose-built interaction patterns optimized for **Phone (< 768px
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Zero-Network On-Device ML**: 35-tree Random Forest compiled into JSON and executed directly in JavaScript runtime (< 2 ms latency) with 0 network calls.
+1. **Zero-Network On-Device ML**: 35-tree Random Forest compiled into JSON and executed directly in JavaScript runtime (measured local ML inference benchmark of < 1 ms pure tree traversal) with 0 network calls.
 2. **Honest Baseline Calibration**: Requires 3 completed sessions before calculating personal medians; single session fluctuations do not trigger false deviations.
-3. **Local-First & Airplane Mode**: IndexedDB local storage guarantees offline functionality, local history review, and zero accidental network dependencies.
+3. **Offline Core Reliability**: Core activities and behavioral intelligence work offline via IndexedDB local storage, local telemetry caching, and zero accidental network dependencies.
 4. **Multilingual Speech & Audio**: Native spoken audio guidance in Telugu, Hindi, and English with synchronized caption banners and local fallback explanations.
 
 ---

@@ -40,14 +40,33 @@ def seed_demo_scenarios(db_path: str = "mindmitra.db") -> Dict[str, Any]:
         c.execute(f"DELETE FROM users WHERE id IN ({prof_placeholders})", demo_prof_ids)
         c.execute("DELETE FROM caregivers WHERE id = ?", (demo_cg_id,))
 
+    import os
+    app_env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+    is_production = app_env in ("production", "prod")
+    allow_demo_seed = os.getenv("ALLOW_DEMO_SEED", "false" if is_production else "true").lower() == "true"
+    demo_email = os.getenv("DEMO_CAREGIVER_EMAIL", "pavan@mindmitra.com")
+    demo_password = os.getenv("DEMO_CAREGIVER_PASSWORD", "mindmitra123" if not is_production else None)
+
+    if is_production and not allow_demo_seed:
+        return {
+            "status": "skipped",
+            "message": "Demo seeding is disabled in production environment."
+        }
+
+    if not demo_password:
+        return {
+            "status": "skipped",
+            "message": "Demo password not configured in environment."
+        }
+
     now = datetime.datetime.now()
 
     # 1. Seed Primary Caregiver Account (Pavan Kumar)
-    pwd_hash = hash_password("mindmitra123")
+    pwd_hash = hash_password(demo_password)
     c.execute("""
         INSERT INTO caregivers (id, name, email, password_hash, created_at, updated_at, active)
-        VALUES (1, 'Pavan Kumar', 'pavan@mindmitra.com', ?, ?, ?, 1)
-    """, (pwd_hash, now.isoformat(), now.isoformat()))
+        VALUES (1, 'Pavan Kumar', ?, ?, ?, ?, 1)
+    """, (demo_email, pwd_hash, now.isoformat(), now.isoformat()))
 
     # 2. Seed 3 Independent Elderly Sub-Profiles under Caregiver 1
     # Profile 1: Rajesh Kumar (Age 72) -> Scenario A (Stable)
