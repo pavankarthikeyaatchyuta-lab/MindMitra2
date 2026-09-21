@@ -4,6 +4,8 @@ export type ActivityContext =
   | 'welcome'
   | 'start'
   | 'instruction'
+  | 'study'
+  | 'recall_start'
   | 'success'
   | 'incorrect'
   | 'help'
@@ -23,6 +25,8 @@ export interface ActivityInstructionSet {
   welcome: Record<Language, string>;
   start: Record<Language, string>;
   instruction: Record<Language, string>;
+  study?: Record<Language, string>;
+  recall_start?: Record<Language, string>;
   success: Record<Language, string>;
   incorrect: Record<Language, string>;
   help: Record<Language, string>;
@@ -46,6 +50,16 @@ export const ACTIVITY_INSTRUCTIONS: Record<ActivityId, ActivityInstructionSet> =
       en: "Let's begin. Find the matching pairs.",
       te: 'ప్రారంభిద్దాం. సరిపోలే జతలను కనుగొనండి.',
       hi: 'आइए शुरू करते हैं। मेल खाने वाले जोड़े खोजें।',
+    },
+    study: {
+      en: 'Take a moment to remember where the matching cards are.',
+      te: 'సరిపోలే కార్డులు ఎక్కడ ఉన్నాయో గుర్తుంచుకోవడానికి కాసేపు గమనించండి.',
+      hi: 'एक पल के लिए ध्यान से देखें कि मेल खाने वाले कार्ड कहाँ हैं।',
+    },
+    recall_start: {
+      en: "Ready? Let's find the matching pairs.",
+      te: 'సిద్ధంగా ఉన్నారా? సరిపోలే జతలను కనుగొందాం.',
+      hi: 'तैयार हैं? आइए मेल खाने वाले जोड़ों को खोजें।',
     },
     instruction: {
       en: 'Tap two cards to reveal what is hidden beneath.',
@@ -401,8 +415,13 @@ export class InstructionService {
   /**
    * Returns common elder-friendly interface labels.
    */
-  public static getCommon(key: 'listen' | 'listen_again' | 'help' | 'hint' | 'voice_unavailable' | 'start', lang: Language = 'en'): string {
+  public static getCommon(key: 'listen' | 'listen_again' | 'help' | 'hint' | 'voice_unavailable' | 'start' | 'im_ready', lang: Language = 'en'): string {
     const table: Record<string, Record<Language, string>> = {
+      im_ready: {
+        en: "I'm Ready",
+        te: 'నేను సిద్ధంగా ఉన్నాను',
+        hi: 'मैं तैयार हूँ',
+      },
       listen: {
         en: 'Listen',
         te: 'వినండి',

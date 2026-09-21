@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { useTranslation } from '../i18n';
 import { VoiceService } from '../services/voiceService';
-import { Lightbulb } from 'lucide-react';
+import { InstructionService } from '../services/instructionService';
+import { Lightbulb, ArrowRight, Eye } from 'lucide-react';
 
 export interface GameMetrics {
   accuracy: number;
@@ -11,6 +11,9 @@ export interface GameMetrics {
   corrections: number;
   completion_time_ms: number;
   total_events: number;
+  study_duration_ms?: number;
+  first_interaction_latency_ms?: number;
+  mismatches?: number;
 }
 
 export interface GameProps {
@@ -30,7 +33,7 @@ const CELESTIAL_EMOJIS = [
 const getPairCount = (difficulty: number) => {
   switch (difficulty) {
     case 1: return 3; // 6 cards (3x2)
-    case 2: return 4; // 8 cards (4x2 on tablet/desktop, 2x4 on mobile)
+    case 2: return 4; // 8 cards (4x2 or 2x4)
     case 3: return 6; // 12 cards (4x3)
     case 4: return 8; // 16 cards (4x4)
     default: return 4;
@@ -47,6 +50,8 @@ interface Card {
 
 export default function MemoryMatch({ difficulty, userId, gameSessionId, onComplete, hintTrigger, onProvideCustomHint }: GameProps) {
   const { t, language } = useTranslation();
+  const [phase, setPhase] = useState<'study' | 'recall'>('study');
+  const [studyRemaining, setStudyRemaining] = useState(7);
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [isLocked, setIsLocked] = useState(false);
@@ -54,16 +59,22 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   const [elapsedTime, setElapsedTime] = useState(0);
 
   const idleTimerRef = useRef<any>(null);
+  const studyTimerRef = useRef<any>(null);
   const lastHintTriggerRef = useRef(hintTrigger);
 
   const stats = useRef({
+    phase: 'study' as 'study' | 'recall',
     flips: 0,
     matches: 0,
     errors: 0,
     repeatErrors: 0,
     corrections: 0,
     responseTimes: [] as number[],
-    startTime: 0,
+    studyStartTime: 0,
+    studyDuration: 0,
+    recallStartTime: 0,
+    firstInteractionTime: 0,
+    firstLatency: 0,
     lastActionTime: 0,
     seenCards: new Set<string>(),
     completed: false
@@ -74,7 +85,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(() => {
-      if (!stats.current.completed) {
+      if (!stats.current.completed && stats.current.phase === 'recall') {
         VoiceService.speakContext('memory_match', 'idle', language, false);
       }
     }, 14000);
@@ -83,6 +94,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   useEffect(() => {
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (studyTimerRef.current) clearInterval(studyTimerRef.current);
     };
   }, []);
 
@@ -90,24 +102,29 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     initGame();
   }, [difficulty, gameSessionId]);
 
+  // Elapsed active recall timer
   useEffect(() => {
     let timer: any;
-    if (!isComplete && stats.current.startTime > 0) {
+    if (!isComplete && phase === 'recall' && stats.current.recallStartTime > 0) {
       timer = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - stats.current.startTime) / 1000));
+        setElapsedTime(Math.floor((Date.now() - stats.current.recallStartTime) / 1000));
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isComplete]);
+  }, [isComplete, phase]);
 
   const initGame = () => {
+    if (studyTimerRef.current) clearInterval(studyTimerRef.current);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+
     const selectedEmojis = CELESTIAL_EMOJIS.slice(0, pairCount);
+    // Phase 1 (STUDY): Show all cards face-up
     const deck = [...selectedEmojis, ...selectedEmojis]
       .sort(() => Math.random() - 0.5)
       .map((emoji, idx) => ({
         id: idx,
         emoji,
-        isFlipped: false,
+        isFlipped: true, // Face-up during study
         isMatched: false
       }));
 
@@ -116,24 +133,84 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     setIsLocked(false);
     setIsComplete(false);
     setElapsedTime(0);
+    setPhase('study');
+    setStudyRemaining(7);
 
+    const now = Date.now();
     stats.current = {
+      phase: 'study',
       flips: 0,
       matches: 0,
       errors: 0,
       repeatErrors: 0,
       corrections: 0,
       responseTimes: [],
-      startTime: Date.now(),
-      lastActionTime: Date.now(),
+      studyStartTime: now,
+      studyDuration: 0,
+      recallStartTime: 0,
+      firstInteractionTime: 0,
+      firstLatency: 0,
+      lastActionTime: now,
       seenCards: new Set<string>(),
       completed: false
     };
+
+    // Speak Phase 1 Study prompt: "Take a moment to remember where the matching cards are."
+    const timerPrompt = setTimeout(() => {
+      VoiceService.speakContext('memory_match', 'study', language, true);
+    }, 400);
+
+    // Run 7-second countdown for observation
+    let countdown = 7;
+    studyTimerRef.current = setInterval(() => {
+      countdown -= 1;
+      setStudyRemaining(countdown);
+      if (countdown <= 0) {
+        clearInterval(studyTimerRef.current);
+        studyTimerRef.current = null;
+        startRecallPhase();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timerPrompt);
+  };
+
+  const startRecallPhase = () => {
+    if (studyTimerRef.current) {
+      clearInterval(studyTimerRef.current);
+      studyTimerRef.current = null;
+    }
+    if (stats.current.phase === 'recall') return;
+
+    const now = Date.now();
+    const actualStudyDuration = stats.current.studyStartTime > 0
+      ? now - stats.current.studyStartTime
+      : 7000;
+
+    stats.current.phase = 'recall';
+    stats.current.studyDuration = actualStudyDuration;
+    stats.current.recallStartTime = now;
+    stats.current.lastActionTime = now;
+
+    // Phase 2 (RECALL): Flip all cards face-down
+    setCards(prev => prev.map(c => ({ ...c, isFlipped: false, isMatched: false })));
+    setFlippedIndices([]);
+    setIsLocked(false);
+    setPhase('recall');
+
+    // Spoken prompt: "Ready? Let's find the matching pairs."
+    VoiceService.speakContext('memory_match', 'recall_start', language, true);
     resetIdleTimer();
   };
 
   const triggerHint = () => {
     if (isComplete || isLocked) return;
+
+    // In study phase, cards are already visible
+    if (phase === 'study') {
+      startRecallPhase();
+      return;
+    }
 
     // Find unmatched cards grouped by emoji
     const emojiMap = new Map<string, number[]>();
@@ -150,7 +227,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
 
     const [idx1, idx2] = targetIndices;
 
-    // Flip them briefly for 2.2 seconds so player can see
+    // Flip them briefly for 2.2 seconds
     setCards(prev => prev.map((c, i) => (i === idx1 || i === idx2 ? { ...c, isFlipped: true, isHinted: true } : c)));
 
     const hintMsg = language === 'te'
@@ -178,10 +255,19 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   }, [hintTrigger]);
 
   const handleCardClick = (idx: number) => {
+    // During study phase, card clicks do not trigger matches
+    if (phase === 'study') return;
     if (isLocked || cards[idx].isFlipped || cards[idx].isMatched) return;
 
     resetIdleTimer();
     const now = Date.now();
+
+    // Track latency to first card click in recall phase
+    if (stats.current.firstInteractionTime === 0 && stats.current.recallStartTime > 0) {
+      stats.current.firstInteractionTime = now;
+      stats.current.firstLatency = now - stats.current.recallStartTime;
+    }
+
     const rt = now - (stats.current.lastActionTime || now);
     stats.current.responseTimes.push(rt);
     stats.current.lastActionTime = now;
@@ -233,28 +319,36 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
 
   const finishGame = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (studyTimerRef.current) clearInterval(studyTimerRef.current);
     if (stats.current.completed) return;
     stats.current.completed = true;
     setIsComplete(true);
+
     const now = Date.now();
-    const totalTime = now - stats.current.startTime;
+    const recallDuration = stats.current.recallStartTime > 0
+      ? now - stats.current.recallStartTime
+      : 5000;
+
     const avgRt = stats.current.responseTimes.length > 0
       ? stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length
-      : 2000;
+      : 1800;
 
-    // In memory match, discovering card locations naturally requires exploratory flips.
-    // We provide an exploration baseline buffer of (pairCount - 1) so normal discovery is not penalized as cognitive failure.
-    const explorationBuffer = Math.max(1, pairCount - 1);
-    const penalizableErrors = stats.current.repeatErrors + Math.max(0, stats.current.errors - explorationBuffer);
+    // Accuracy formula:
+    // With study preview, repeat mismatches are the primary error signal.
+    // An initial 1-mismatch exploration buffer ensures elders are not heavily penalized for orienting flips.
+    const penalizableErrors = stats.current.repeatErrors + Math.max(0, stats.current.errors - 1);
     const accuracy = stats.current.matches / Math.max(1, stats.current.matches + penalizableErrors);
 
     onComplete({
       accuracy: Math.min(1.0, Math.max(0.1, accuracy)),
-      avg_response_time_ms: avgRt,
+      avg_response_time_ms: Math.round(avgRt),
       repeat_errors: stats.current.repeatErrors,
-      corrections: stats.current.corrections,
-      completion_time_ms: totalTime,
-      total_events: stats.current.flips
+      corrections: stats.current.errors,
+      completion_time_ms: recallDuration,
+      total_events: stats.current.flips,
+      study_duration_ms: stats.current.studyDuration,
+      first_interaction_latency_ms: stats.current.firstLatency || Math.round(avgRt),
+      mismatches: stats.current.errors,
     });
   };
 
@@ -263,45 +357,106 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   return (
     <div className="flex flex-col items-center justify-center max-w-3xl mx-auto py-2">
       {/* Header Info */}
-      <div className="w-full card p-5 mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="w-full card p-4 sm:p-5 mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <span>🧠</span> {t('games.memory.title', 'Memory Match')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {t('games.memory.instructions', 'Flip the cards to match pairs of symbols.')}
+            {phase === 'study'
+              ? (language === 'te' ? 'కార్డుల స్థానాలను నిదానంగా గమనించండి.' : language === 'hi' ? 'कार्डों के स्थानों को ध्यानपूर्वक देखें।' : 'Take a moment to study card locations.')
+              : t('games.memory.instructions', 'Flip the cards to match pairs of symbols.')}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
-          <button
-            onClick={triggerHint}
-            disabled={isLocked || isComplete}
-            className="px-3.5 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-300 dark:border-amber-700 text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95 min-h-[38px]"
-            title="Peek at a matching pair"
-          >
-            <Lightbulb size={15} className="text-amber-600 dark:text-amber-400" />
-            <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
-          </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {phase === 'recall' && (
+            <button
+              onClick={triggerHint}
+              disabled={isLocked || isComplete}
+              className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-300 dark:border-amber-700 text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95 min-h-[38px]"
+              title="Peek at a matching pair"
+            >
+              <Lightbulb size={15} className="text-amber-600 dark:text-amber-400" />
+              <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
+            </button>
+          )}
 
-          <div className="text-center px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider block font-bold">Pairs Found</span>
-            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{matchesFound} / {pairCount}</span>
+          <div className="text-center px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 min-w-[70px]">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider block font-bold">
+              {phase === 'study' ? 'Study' : 'Pairs'}
+            </span>
+            <span className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
+              {phase === 'study' ? `${studyRemaining}s` : `${matchesFound} / ${pairCount}`}
+            </span>
           </div>
 
-          <div className="text-center px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider block font-bold">Time</span>
-            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{elapsedTime}s</span>
+          <div className="text-center px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 min-w-[70px]">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider block font-bold">
+              {phase === 'study' ? 'Phase' : 'Time'}
+            </span>
+            <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+              {phase === 'study' ? '1 / 2' : `${elapsedTime}s`}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* PHASE 1: STUDY BANNER & "I'M READY" CTA */}
+      {phase === 'study' && (
+        <div className="w-full mb-4 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border-2 border-indigo-200 dark:border-indigo-800 text-center sm:text-left shadow-sm animate-in fade-in">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-center sm:justify-start gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-ping" />
+                <span className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  {language === 'te' ? 'దశ 1 — గమనించే సమయం (Study Phase)' : language === 'hi' ? 'चरण 1 — अध्ययन समय (Study Phase)' : 'Phase 1 — Study Observation'}
+                </span>
+              </div>
+              <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                {InstructionService.get('memory_match', 'study', language)}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="px-3.5 py-2 bg-white dark:bg-slate-900 rounded-xl border border-indigo-200 dark:border-indigo-700 text-xs font-black text-indigo-700 dark:text-indigo-300 shadow-xs flex items-center gap-1.5">
+                <Eye size={14} />
+                <span>{studyRemaining}s</span>
+              </div>
+
+              <button
+                onClick={startRecallPhase}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl font-black text-sm shadow-md transition-all cursor-pointer flex items-center gap-2 min-h-[44px]"
+              >
+                <span>{InstructionService.getCommon('im_ready', language)}</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PHASE 2: RECALL ACTIVE BANNER */}
+      {phase === 'recall' && (
+        <div className="w-full mb-4 px-4 py-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{InstructionService.get('memory_match', 'recall_start', language)}</span>
+          </div>
+          <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-bold">
+            Phase 2: Recall
+          </span>
+        </div>
+      )}
 
       {/* Behavioral Sensor Telemetry Banner */}
       <div className="w-full mb-4 px-4 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 shadow-xs">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-semibold text-slate-900 dark:text-white">Phone Sensor Active:</span>
-          <span className="text-slate-500 dark:text-slate-400">Observing touch cadence & interaction rhythm</span>
+          <span className="text-slate-500 dark:text-slate-400">
+            {phase === 'study' ? 'Observing visual inspection pacing' : 'Observing touch cadence & interaction rhythm'}
+          </span>
         </div>
         <span className="hidden sm:inline text-[11px] font-mono text-slate-400">Level {difficulty}</span>
       </div>
@@ -322,9 +477,12 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
           <button
             key={card.id}
             onClick={() => handleCardClick(idx)}
-            disabled={card.isFlipped || card.isMatched || isLocked}
+            disabled={phase === 'study' || card.isMatched || (phase === 'recall' && (card.isFlipped || isLocked))}
+            aria-label={card.isFlipped ? `Card ${card.emoji}` : 'Hidden card'}
             className={`h-24 sm:h-28 w-full rounded-2xl flex items-center justify-center text-4xl sm:text-5xl transition-all duration-200 shadow-xs ${
-              card.isHinted
+              phase === 'study'
+                ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-200/40 dark:ring-indigo-800/40 cursor-default'
+                : card.isHinted
                 ? 'bg-amber-50 dark:bg-amber-950/70 border-3 border-amber-400 ring-4 ring-amber-400/50 shadow-lg text-amber-800 dark:text-amber-200 animate-pulse'
                 : card.isMatched
                 ? 'bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-300'
