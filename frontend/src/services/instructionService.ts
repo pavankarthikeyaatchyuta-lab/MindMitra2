@@ -63,9 +63,9 @@ export const ACTIVITY_INSTRUCTIONS: Record<ActivityId, ActivityInstructionSet> =
       hi: 'यह मेल नहीं खाया। दूसरी जोड़ी आज़माएं।',
     },
     help: {
-      en: 'Take your time. Tap any two cards to see the symbols.',
-      te: 'ప్రశాంతంగా ఆలోచించండి. ఏవైనా రెండు కార్డులను ఎంచుకోండి.',
-      hi: 'आराम से सोचें। किन्हीं दो कार्डों को चुनकर देखें।',
+      en: "Take your time. Look at the cards you haven't turned over yet to find a matching pair.",
+      te: 'ప్రశాంతంగా ఆలోచించండి. సరిపోలే జతను కనుగొనడానికి మీరు ఇంకా తెరవని కార్డులను గమనించండి.',
+      hi: 'आराम से सोचें। मेल खाने वाली जोड़ी खोजने के लिए उन कार्डों पर ध्यान दें जिन्हें आपने अभी तक नहीं खोला है।',
     },
     idle: {
       en: 'You can tap any card to begin whenever you are ready.',
@@ -322,10 +322,24 @@ export const ACTIVITY_INSTRUCTIONS: Record<ActivityId, ActivityInstructionSet> =
 
 export class InstructionService {
   /**
+   * Normalizes any activity string alias into a canonical ActivityId.
+   */
+  public static normalizeId(id: string): ActivityId {
+    if (id === 'memory' || id === 'memory_match') return 'memory_match';
+    if (id === 'routine' || id === 'daily_routine') return 'daily_routine';
+    if (id === 'recognition' || id === 'object_recognition') return 'object_recognition';
+    if (id === 'pattern' || id === 'pattern_recall') return 'pattern_recall';
+    if (id === 'voice' || id === 'voice_recall') return 'voice_recall';
+    if (id === 'visual' || id === 'visual_recall') return 'visual_recall';
+    return (id as ActivityId) in ACTIVITY_INSTRUCTIONS ? (id as ActivityId) : 'memory_match';
+  }
+
+  /**
    * Retrieves localized elder-friendly instruction for a given game and context.
    */
-  public static get(activityId: ActivityId, context: ActivityContext, lang: Language = 'en'): string {
-    const act = ACTIVITY_INSTRUCTIONS[activityId] || ACTIVITY_INSTRUCTIONS.memory_match;
+  public static get(activityId: ActivityId | string, context: ActivityContext, lang: Language = 'en'): string {
+    const id = this.normalizeId(activityId);
+    const act = ACTIVITY_INSTRUCTIONS[id] || ACTIVITY_INSTRUCTIONS.memory_match;
     const contextMap = act[context] || act.instruction;
     return contextMap[lang] || contextMap.en || '';
   }
@@ -333,8 +347,9 @@ export class InstructionService {
   /**
    * Retrieves the activity title in the selected language.
    */
-  public static getTitle(activityId: ActivityId, lang: Language = 'en'): string {
-    const act = ACTIVITY_INSTRUCTIONS[activityId] || ACTIVITY_INSTRUCTIONS.memory_match;
+  public static getTitle(activityId: ActivityId | string, lang: Language = 'en'): string {
+    const id = this.normalizeId(activityId);
+    const act = ACTIVITY_INSTRUCTIONS[id] || ACTIVITY_INSTRUCTIONS.memory_match;
     return act.name[lang] || act.name.en;
   }
 
@@ -386,7 +401,7 @@ export class InstructionService {
   /**
    * Returns common elder-friendly interface labels.
    */
-  public static getCommon(key: 'listen' | 'listen_again' | 'help' | 'voice_unavailable' | 'start', lang: Language = 'en'): string {
+  public static getCommon(key: 'listen' | 'listen_again' | 'help' | 'hint' | 'voice_unavailable' | 'start', lang: Language = 'en'): string {
     const table: Record<string, Record<Language, string>> = {
       listen: {
         en: 'Listen',
@@ -399,9 +414,14 @@ export class InstructionService {
         hi: 'फिर से सुनें',
       },
       help: {
-        en: 'Help',
-        te: 'సహాయం',
-        hi: 'मदद',
+        en: 'Help / Hint',
+        te: 'సహాయం / సూచన',
+        hi: 'मदद / सुझाव',
+      },
+      hint: {
+        en: 'Hint',
+        te: 'సూచన',
+        hi: 'सुझाव',
       },
       start: {
         en: 'Start Activity',
@@ -415,5 +435,13 @@ export class InstructionService {
       },
     };
     return table[key]?.[lang] || table[key]?.en || '';
+  }
+
+  /**
+   * Returns a helpful, actionable hint message for the specified game.
+   */
+  public static getHint(gameType: string, lang: Language = 'en'): string {
+    const key = gameType === 'memory_match' ? 'memory' : gameType;
+    return this.get(key, 'help', lang) || this.get('memory', 'help', lang);
   }
 }

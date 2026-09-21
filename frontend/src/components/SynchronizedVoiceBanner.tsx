@@ -9,6 +9,8 @@ interface SynchronizedVoiceBannerProps {
   language?: Language;
   onListenAgain?: () => void;
   onHelp?: () => void;
+  hintText?: string;
+  gameType?: string;
   voiceUnavailableOverride?: boolean;
   className?: string;
 }
@@ -18,6 +20,8 @@ export default function SynchronizedVoiceBanner({
   language = 'en',
   onListenAgain,
   onHelp,
+  hintText,
+  gameType,
   voiceUnavailableOverride,
   className = 'mb-4',
 }: SynchronizedVoiceBannerProps) {
@@ -52,7 +56,8 @@ export default function SynchronizedVoiceBanner({
     if (onHelp) {
       onHelp();
     } else {
-      VoiceService.speak(InstructionService.getCommon('help', activeLanguage), activeLanguage, true);
+      const hint = hintText || InstructionService.getHint(gameType || 'memory', activeLanguage);
+      VoiceService.speak(hint, activeLanguage, true);
     }
   };
 
@@ -102,12 +107,12 @@ export default function SynchronizedVoiceBanner({
             </div>
           </div>
 
-          {/* Action Buttons: Listen Again & Help */}
+          {/* Action Buttons: Listen Again & Help / Hint */}
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
-              onClick={onListenAgain}
+              onClick={handleListenAgain}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-xs transition-colors min-h-[40px] focus:outline-hidden focus:ring-2 focus:ring-blue-500/50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-xs transition-colors min-h-[40px] focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
               title={InstructionService.getCommon('listen_again', language)}
             >
               <Volume2 className="w-4 h-4" />
@@ -115,12 +120,12 @@ export default function SynchronizedVoiceBanner({
             </button>
 
             <button
-              onClick={onHelp}
+              onClick={handleHelp}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors min-h-[40px] focus:outline-hidden focus:ring-2 focus:ring-slate-400/40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/70 dark:hover:bg-amber-900/70 border border-amber-300/80 dark:border-amber-700 active:bg-amber-300 text-amber-900 dark:text-amber-200 transition-colors min-h-[40px] focus:outline-hidden focus:ring-2 focus:ring-amber-500/40 cursor-pointer"
               title={InstructionService.getCommon('help', language)}
             >
-              <HelpCircle className="w-4 h-4" />
+              <HelpCircle className="w-4 h-4 text-amber-700 dark:text-amber-400" />
               <span>{InstructionService.getCommon('help', language)}</span>
             </button>
           </div>

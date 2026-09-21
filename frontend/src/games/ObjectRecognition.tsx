@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
-import { CheckCircle2, XCircle, ShieldCheck, Info, User, Eye, Camera, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, ShieldCheck, Info, User, Eye, Camera, Image as ImageIcon, Lightbulb } from 'lucide-react';
 import { api } from '../services/api';
 import { FamiliarPerson } from '../types';
 import { VoiceService } from '../services/voiceService';
@@ -21,6 +21,8 @@ export interface GameProps {
   userId: number;
   gameSessionId: number;
   onComplete: (metrics: GameMetrics) => void;
+  hintTrigger?: number;
+  onProvideCustomHint?: (hint: string) => void;
 }
 
 interface Option {
@@ -126,7 +128,7 @@ const LEVEL_2_QUESTIONS: QuestionItem[] = [
   }
 ];
 
-export default function ObjectRecognition({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
+export default function ObjectRecognition({ difficulty, userId, gameSessionId, onComplete, hintTrigger, onProvideCustomHint }: GameProps) {
   const { t, language } = useTranslation();
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -136,8 +138,11 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
   const [familiarStatus, setFamiliarStatus] = useState<string | null>(null);
   const [cameraMode, setCameraMode] = useState(false);
   const [familiarList, setFamiliarList] = useState<FamiliarPerson[]>([]);
+  const [eliminatedOptionIds, setEliminatedOptionIds] = useState<string[]>([]);
+  const [hintedOptionId, setHintedOptionId] = useState<string | null>(null);
 
   const idleTimerRef = useRef<any>(null);
+  const lastHintTriggerRef = useRef(hintTrigger);
 
   const stats = useRef({
     correctAnswers: 0,
@@ -148,6 +153,46 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     startTime: 0,
     lastActionTime: 0
   });
+
+  const triggerHint = () => {
+    if (isLocked || !questions[currentIndex]) return;
+    const curQ = questions[currentIndex];
+    const wrongUneliminated = curQ.options.filter(o => !o.isCorrect && !eliminatedOptionIds.includes(o.id));
+
+    if (wrongUneliminated.length > 0) {
+      const toEliminate = wrongUneliminated[0].id;
+      setEliminatedOptionIds(prev => [...prev, toEliminate]);
+
+      const hintMsg = language === 'te'
+        ? 'సూచన: ఒక తప్పు ఎంపికను తొలగించాము. మిగిలిన ఎంపికలను శ్రద్ధగా పరిశీలించండి!'
+        : language === 'hi'
+        ? 'सुझाव: हमने एक गलत विकल्प हटा दिया है। शेष विकल्पों को ध्यान से देखें!'
+        : 'Hint: We eliminated one incorrect option for you. Look closely at the remaining choices!';
+
+      if (onProvideCustomHint) onProvideCustomHint(hintMsg);
+      else VoiceService.speak(hintMsg, language, true);
+    } else {
+      const correctOpt = curQ.options.find(o => o.isCorrect);
+      if (correctOpt) {
+        setHintedOptionId(correctOpt.id);
+        const hintMsg = language === 'te'
+          ? `సూచన: చిత్రం "${correctOpt.display}" కు సంబంధించింది.`
+          : language === 'hi'
+          ? `सुझाव: यह चित्र "${correctOpt.display}" से संबंधित है।`
+          : `Hint: The picture is related to "${correctOpt.display}".`;
+        if (onProvideCustomHint) onProvideCustomHint(hintMsg);
+        else VoiceService.speak(hintMsg, language, true);
+        setTimeout(() => setHintedOptionId(null), 4000);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (hintTrigger && hintTrigger !== lastHintTriggerRef.current) {
+      lastHintTriggerRef.current = hintTrigger;
+      triggerHint();
+    }
+  }, [hintTrigger]);
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -223,6 +268,8 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     setSelectedOptionId(null);
     setFeedback(null);
     setIsLocked(false);
+    setEliminatedOptionIds([]);
+    setHintedOptionId(null);
 
     stats.current = {
       correctAnswers: 0,
@@ -265,6 +312,8 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
     setSelectedOptionId(null);
     setFeedback(null);
     setIsLocked(false);
+    setEliminatedOptionIds([]);
+    setHintedOptionId(null);
     stats.current.lastActionTime = Date.now();
     resetIdleTimer();
 
@@ -362,16 +411,27 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
 
         <div className="flex items-center gap-2">
           <button
+            onClick={triggerHint}
+            type="button"
+            disabled={isLocked}
+            className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors cursor-pointer min-h-[36px]"
+            title="Get a hint"
+          >
+            <Lightbulb size={14} className="text-amber-600 dark:text-amber-400" />
+            <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
+          </button>
+
+          <button
             onClick={() => setCameraMode(true)}
             type="button"
-            className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors cursor-pointer min-h-[36px]"
             title="Switch to live camera recall observation"
           >
             <Camera size={14} />
             <span className="hidden sm:inline">Live Camera Mode</span>
             <span className="sm:hidden">Camera</span>
           </button>
-          <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm">
+          <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm min-h-[36px] flex items-center justify-center">
             {currentIndex + 1} / {questions.length}
           </div>
         </div>
@@ -422,6 +482,8 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
         >
           {currentQ.options.map(option => {
             const isSelected = selectedOptionId === option.id;
+            const isEliminated = eliminatedOptionIds.includes(option.id);
+            const isHinted = hintedOptionId === option.id;
 
             let cardStyle = 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 text-slate-900 dark:text-white';
             if (isSelected) {
@@ -432,13 +494,17 @@ export default function ObjectRecognition({ difficulty, userId, gameSessionId, o
               }
             } else if (feedback === 'incorrect' && option.isCorrect) {
               cardStyle = 'bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-emerald-500 border-dashed text-emerald-700 dark:text-emerald-300 animate-pulse';
+            } else if (isHinted) {
+              cardStyle = 'bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-400 ring-4 ring-amber-400/50 text-amber-900 dark:text-amber-100 animate-pulse';
+            } else if (isEliminated) {
+              cardStyle = 'bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 opacity-25 pointer-events-none line-through';
             }
 
             return (
               <button
                 key={option.id}
                 onClick={() => handleSelectOption(option)}
-                disabled={isLocked}
+                disabled={isLocked || isEliminated}
                 className={`p-5 rounded-2xl flex flex-col items-center justify-center transition-all min-h-[110px] cursor-pointer shadow-xs ${cardStyle}`}
               >
                 {currentQ.type === 'person' ? (

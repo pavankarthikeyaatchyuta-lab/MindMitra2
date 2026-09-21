@@ -15,7 +15,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import SynchronizedVoiceBanner from '../components/SynchronizedVoiceBanner';
 import { InstructionService, ActivityId } from '../services/instructionService';
 import { VoiceService } from '../services/voiceService';
-import { ArrowLeft, Star, ChevronRight, Volume2, VolumeX, Sparkles, CheckCircle2, RotateCcw, Cpu, TrendingDown, TrendingUp, Laptop, Camera, CameraOff } from 'lucide-react';
+import { ArrowLeft, Star, ChevronRight, Volume2, VolumeX, Sparkles, CheckCircle2, RotateCcw, Cpu, TrendingDown, TrendingUp, Laptop, Camera, CameraOff, Lightbulb, X } from 'lucide-react';
 import { predictOnDevice } from '../services/onDeviceInference';
 import { PersonalBaselineEngine } from '../services/personalBaselineEngine';
 import { OfficeKitBridge } from '../services/officeKitBridge';
@@ -73,6 +73,17 @@ export default function GamePage() {
   const isRecognition = activeKey === 'recognition' || activeKey === 'object_recognition' || activeKey === 'visual' || gt === 'object_recognition';
   const isPattern = activeKey === 'pattern' || activeKey === 'pattern_recall' || gt === 'pattern_recall';
   const isVoice = activeKey === 'voice' || activeKey === 'voice_recall' || gt === 'voice_recall';
+
+  // Context-aware Hint state and trigger
+  const [activeHint, setActiveHint] = useState<string | null>(null);
+  const [hintTriggerCount, setHintTriggerCount] = useState(0);
+
+  const handleRequestHint = useCallback((customHint?: string) => {
+    const hintText = customHint || InstructionService.getHint(gt, language);
+    setActiveHint(hintText);
+    VoiceService.speak(hintText, language, true);
+    setHintTriggerCount(prev => prev + 1);
+  }, [gt, language]);
 
   // Optional on-device camera behavioral sensor (presence & cadence observation)
   const [cameraSensorActive, setCameraSensorActive] = useState(false);
@@ -232,6 +243,7 @@ export default function GamePage() {
     setFinished(false);
     setLastMetrics(null);
     setAdaptiveResult(null);
+    setActiveHint(null);
     initGameSession();
   }, [activeKey, currentUser?.id]);
 
@@ -434,13 +446,22 @@ export default function GamePage() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <button
+            onClick={() => handleRequestHint()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition-all active:scale-95 shadow-xs cursor-pointer min-h-[36px]"
+            title="Get a Game Hint"
+          >
+            <Lightbulb size={15} className="text-amber-600 dark:text-amber-400" />
+            <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
+          </button>
+
+          <button
             onClick={() => {
               if (!voiceEnabled) {
                 setVoiceEnabled(true);
               }
               playAudioGuide();
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold transition-all active:scale-95 shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold transition-all active:scale-95 shadow-xs min-h-[36px]"
             title="Listen to Spoken Audio Guide"
           >
             <Volume2 size={16} />
@@ -541,9 +562,54 @@ export default function GamePage() {
             <div onPointerDown={() => visualTrackerRef.current.recordUserInteraction()}>
               <SynchronizedVoiceBanner
                 language={language}
-                currentText={InstructionService.get(gt, 'instruction', language)}
+                gameType={gt}
+                currentText={activeHint ? `💡 ${activeHint}` : InstructionService.get(gt, 'instruction', language)}
+                onHelp={() => handleRequestHint()}
+                onListenAgain={playAudioGuide}
                 className="mb-4"
               />
+
+              {/* Active Context-Aware Game Hint Banner */}
+              {activeHint && (
+                <div className="mb-4 p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-start justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+                      <Lightbulb size={20} className="text-amber-600 dark:text-amber-400 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                          {language === 'te' ? '💡 గేమ్ సూచన (Hint)' : language === 'hi' ? '💡 खेल सुझाव (Hint)' : '💡 Activity Hint'}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-200/60 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 font-bold">
+                          {language === 'te' ? 'సహాయం' : language === 'hi' ? 'मदद' : 'Help Assistance'}
+                        </span>
+                      </div>
+                      <p className="text-sm sm:text-base font-semibold text-amber-900 dark:text-amber-100 mt-1 leading-relaxed">
+                        {activeHint}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => VoiceService.speak(activeHint, language, true)}
+                      className="p-2 rounded-xl text-amber-800 dark:text-amber-200 hover:bg-amber-200/70 dark:hover:bg-amber-900/70 transition-colors cursor-pointer"
+                      title="Speak hint aloud"
+                      aria-label="Speak hint aloud"
+                    >
+                      <Volume2 size={18} />
+                    </button>
+                    <button
+                      onClick={() => setActiveHint(null)}
+                      className="p-2 rounded-xl text-amber-800 dark:text-amber-200 hover:bg-amber-200/70 dark:hover:bg-amber-900/70 transition-colors cursor-pointer"
+                      title="Dismiss hint"
+                      aria-label="Dismiss hint"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Optional On-Device Camera Behavioral Sensor Overlay */}
               {cameraSensorActive && (
@@ -595,6 +661,8 @@ export default function GamePage() {
                   userId={activeUserId}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
+                  hintTrigger={hintTriggerCount}
+                  onProvideCustomHint={handleRequestHint}
                 />
               )}
               {isRoutine && (
@@ -603,6 +671,8 @@ export default function GamePage() {
                   userId={activeUserId}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
+                  hintTrigger={hintTriggerCount}
+                  onProvideCustomHint={handleRequestHint}
                 />
               )}
               {isRecognition && (
@@ -611,6 +681,8 @@ export default function GamePage() {
                   userId={activeUserId}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
+                  hintTrigger={hintTriggerCount}
+                  onProvideCustomHint={handleRequestHint}
                 />
               )}
               {isPattern && (
@@ -619,12 +691,16 @@ export default function GamePage() {
                   userId={activeUserId}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
+                  hintTrigger={hintTriggerCount}
+                  onProvideCustomHint={handleRequestHint}
                 />
               )}
               {isVoice && (
                 <VoiceRecallActivity
                   onComplete={handleVoiceComplete}
                   onCancel={() => navigate('/activities')}
+                  hintTrigger={hintTriggerCount}
+                  onProvideCustomHint={handleRequestHint}
                 />
               )}
             </div>

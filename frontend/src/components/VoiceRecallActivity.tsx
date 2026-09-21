@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, CheckCircle2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Mic, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Lightbulb } from 'lucide-react';
 import { useTranslation } from '../i18n';
+import { VoiceService } from '../services/voiceService';
 import {
   VoiceSensorTracker,
   VoiceBehavioralVector,
@@ -8,23 +9,51 @@ import {
   VoiceRecallPrompt,
   getPromptCategory,
   getPromptQuestion,
+  getPromptKeywords,
 } from '../services/voiceTelemetry';
 
 interface VoiceRecallActivityProps {
   onComplete: (vector: VoiceBehavioralVector) => void;
   onCancel: () => void;
+  hintTrigger?: number;
+  onProvideCustomHint?: (hint: string) => void;
 }
 
-export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecallActivityProps) {
+export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger, onProvideCustomHint }: VoiceRecallActivityProps) {
   const { language } = useTranslation();
   const [promptIndex, setPromptIndex] = useState(0);
   const [status, setStatus] = useState<'idle' | 'listening' | 'speaking' | 'completed' | 'error'>('idle');
   const [transcript, setTranscript] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [resultVector, setResultVector] = useState<VoiceBehavioralVector | null>(null);
+  const [showVoiceHint, setShowVoiceHint] = useState(false);
 
   const trackerRef = useRef<VoiceSensorTracker>(new VoiceSensorTracker());
+  const lastHintTriggerRef = useRef(hintTrigger);
   const currentPrompt: VoiceRecallPrompt = DEFAULT_VOICE_PROMPTS[promptIndex];
+
+  const triggerHint = () => {
+    setShowVoiceHint(true);
+    const keywords = getPromptKeywords(currentPrompt, language).slice(0, 4);
+    const hintMsg = language === 'te'
+      ? `సూచన: మైక్రోఫోన్‌లో ప్రశాంతంగా మాట్లాడండి. మీరు ఈ క్రింది పదాలలో ఏవైనా చెప్పవచ్చు: ${keywords.join(', ')}`
+      : language === 'hi'
+      ? `सुझाव: माइक्रोफ़ोन में स्वाभाविक रूप से बोलें। आप इनमें से कोई भी शब्द बोल सकते हैं: ${keywords.join(', ')}`
+      : `Hint: Speak naturally into the microphone. You can say any of these words: ${keywords.join(', ')}`;
+
+    if (onProvideCustomHint) {
+      onProvideCustomHint(hintMsg);
+    } else {
+      VoiceService.speak(hintMsg, language, true);
+    }
+  };
+
+  useEffect(() => {
+    if (hintTrigger && hintTrigger !== lastHintTriggerRef.current) {
+      lastHintTriggerRef.current = hintTrigger;
+      triggerHint();
+    }
+  }, [hintTrigger]);
 
   useEffect(() => {
     return () => {
@@ -226,12 +255,31 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
         </div>
       )}
 
+      {/* Voice Prompt Suggestions / Hint Chips */}
+      {showVoiceHint && (
+        <div className="mb-5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-left animate-in fade-in">
+          <span className="text-[11px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 block mb-2">
+            💡 {language === 'te' ? 'సూచించిన పదాలు (నమూనాలు):' : language === 'hi' ? 'सुझाए गए शब्द (नमूने):' : 'Suggested sample words to try:'}
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {getPromptKeywords(currentPrompt, language).map((kw: string, i: number) => (
+              <span
+                key={i}
+                className="px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/80 text-amber-900 dark:text-amber-100 text-xs font-bold border border-amber-200 dark:border-amber-800"
+              >
+                "{kw}"
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         {status === 'idle' && (
           <button
             onClick={handleStart}
-            className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2"
+            className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
           >
             <Mic size={18} />
             <span>{btnTapToSpeak[language] || btnTapToSpeak.en}</span>
@@ -241,16 +289,28 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
         {(status === 'listening' || status === 'speaking') && (
           <button
             onClick={() => trackerRef.current.stop()}
-            className="w-full sm:w-auto py-3 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm"
+            className="w-full sm:w-auto py-3 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm cursor-pointer"
           >
             {btnDoneSpeaking[language] || btnDoneSpeaking.en}
+          </button>
+        )}
+
+        {status !== 'completed' && (
+          <button
+            onClick={triggerHint}
+            type="button"
+            className="w-full sm:w-auto px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors cursor-pointer min-h-[44px]"
+            title="Get suggested words hint"
+          >
+            <Lightbulb size={16} className="text-amber-600 dark:text-amber-400" />
+            <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
           </button>
         )}
 
         {status === 'completed' && resultVector && resultVector.word_count > 0 && (
           <button
             onClick={handleFinish}
-            className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2"
+            className="w-full sm:w-auto elderly-btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>{btnContinue[language] || btnContinue.en}</span>
             <ArrowRight size={18} />
@@ -259,7 +319,7 @@ export default function VoiceRecallActivity({ onComplete, onCancel }: VoiceRecal
 
         <button
           onClick={onCancel}
-          className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer min-h-[44px]"
         >
           {btnSwitchTouch[language] || btnSwitchTouch.en}
         </button>

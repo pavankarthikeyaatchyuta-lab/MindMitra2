@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '../i18n';
 import { VoiceService } from '../services/voiceService';
+import { Lightbulb } from 'lucide-react';
 
 export interface GameMetrics {
   accuracy: number;
@@ -17,6 +18,8 @@ export interface GameProps {
   userId: number;
   gameSessionId: number;
   onComplete: (metrics: GameMetrics) => void;
+  hintTrigger?: number;
+  onProvideCustomHint?: (hint: string) => void;
 }
 
 const CELESTIAL_EMOJIS = [
@@ -39,9 +42,10 @@ interface Card {
   emoji: string;
   isFlipped: boolean;
   isMatched: boolean;
+  isHinted?: boolean;
 }
 
-export default function MemoryMatch({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
+export default function MemoryMatch({ difficulty, userId, gameSessionId, onComplete, hintTrigger, onProvideCustomHint }: GameProps) {
   const { t, language } = useTranslation();
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
@@ -50,6 +54,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
   const [elapsedTime, setElapsedTime] = useState(0);
 
   const idleTimerRef = useRef<any>(null);
+  const lastHintTriggerRef = useRef(hintTrigger);
 
   const stats = useRef({
     flips: 0,
@@ -126,6 +131,51 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     };
     resetIdleTimer();
   };
+
+  const triggerHint = () => {
+    if (isComplete || isLocked) return;
+
+    // Find unmatched cards grouped by emoji
+    const emojiMap = new Map<string, number[]>();
+    cards.forEach((c, idx) => {
+      if (!c.isMatched && !c.isFlipped) {
+        const list = emojiMap.get(c.emoji) || [];
+        list.push(idx);
+        emojiMap.set(c.emoji, list);
+      }
+    });
+
+    const targetIndices = Array.from(emojiMap.values()).find(indices => indices.length >= 2);
+    if (!targetIndices || targetIndices.length < 2) return;
+
+    const [idx1, idx2] = targetIndices;
+
+    // Flip them briefly for 2.2 seconds so player can see
+    setCards(prev => prev.map((c, i) => (i === idx1 || i === idx2 ? { ...c, isFlipped: true, isHinted: true } : c)));
+
+    const hintMsg = language === 'te'
+      ? `సూచన: ఈ రెండు కార్డులను చూడండి! (${cards[idx1]?.emoji || ''})`
+      : language === 'hi'
+      ? `सुझाव: इन दो कार्डों को एक पल के लिए देखें! (${cards[idx1]?.emoji || ''})`
+      : `Hint: Take a peek at these two matching cards! (${cards[idx1]?.emoji || ''})`;
+
+    if (onProvideCustomHint) {
+      onProvideCustomHint(hintMsg);
+    } else {
+      VoiceService.speak(hintMsg, language, true);
+    }
+
+    setTimeout(() => {
+      setCards(prev => prev.map((c, i) => (i === idx1 || i === idx2 ? { ...c, isFlipped: false, isHinted: false } : c)));
+    }, 2200);
+  };
+
+  useEffect(() => {
+    if (hintTrigger && hintTrigger !== lastHintTriggerRef.current) {
+      lastHintTriggerRef.current = hintTrigger;
+      triggerHint();
+    }
+  }, [hintTrigger]);
 
   const handleCardClick = (idx: number) => {
     if (isLocked || cards[idx].isFlipped || cards[idx].isMatched) return;
@@ -223,7 +273,17 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button
+            onClick={triggerHint}
+            disabled={isLocked || isComplete}
+            className="px-3.5 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-300 dark:border-amber-700 text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95 min-h-[38px]"
+            title="Peek at a matching pair"
+          >
+            <Lightbulb size={15} className="text-amber-600 dark:text-amber-400" />
+            <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
+          </button>
+
           <div className="text-center px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
             <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider block font-bold">Pairs Found</span>
             <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{matchesFound} / {pairCount}</span>
@@ -264,7 +324,9 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
             onClick={() => handleCardClick(idx)}
             disabled={card.isFlipped || card.isMatched || isLocked}
             className={`h-24 sm:h-28 w-full rounded-2xl flex items-center justify-center text-4xl sm:text-5xl transition-all duration-200 shadow-xs ${
-              card.isMatched
+              card.isHinted
+                ? 'bg-amber-50 dark:bg-amber-950/70 border-3 border-amber-400 ring-4 ring-amber-400/50 shadow-lg text-amber-800 dark:text-amber-200 animate-pulse'
+                : card.isMatched
                 ? 'bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-300'
                 : card.isFlipped
                 ? 'bg-blue-50 dark:bg-blue-950/60 border-2 border-blue-500 text-blue-700 dark:text-blue-300'

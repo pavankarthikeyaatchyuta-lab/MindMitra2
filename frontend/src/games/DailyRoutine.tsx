@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import { Language } from '../types';
-import { CheckCircle2, RotateCcw, ArrowRight, Sparkles, Check, RefreshCw } from 'lucide-react';
+import { CheckCircle2, RotateCcw, ArrowRight, Sparkles, Check, RefreshCw, Lightbulb } from 'lucide-react';
 import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
@@ -19,6 +19,8 @@ export interface GameProps {
   userId: number;
   gameSessionId: number;
   onComplete: (metrics: GameMetrics) => void;
+  hintTrigger?: number;
+  onProvideCustomHint?: (hint: string) => void;
 }
 
 interface RoutineTaskDef {
@@ -94,7 +96,7 @@ const ROUTINE_CATEGORIES: RoutineCategoryDef[] = [
   },
 ];
 
-export default function DailyRoutine({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
+export default function DailyRoutine({ difficulty, userId, gameSessionId, onComplete, hintTrigger, onProvideCustomHint }: GameProps) {
   const { t, language } = useTranslation();
 
   const [stage, setStage] = useState<'memorize' | 'recall'>('memorize');
@@ -103,8 +105,10 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   const [poolItems, setPoolItems] = useState<DisplayRoutineItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<DisplayRoutineItem[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [hintedItemId, setHintedItemId] = useState<string | null>(null);
 
   const idleTimerRef = useRef<any>(null);
+  const lastHintTriggerRef = useRef(hintTrigger);
 
   const stats = useRef({
     firstInteractionLatencyMs: 0,
@@ -116,6 +120,52 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   });
 
   const itemCount = Math.min(6, Math.max(3, difficulty + 2));
+
+  const triggerHint = () => {
+    if (isComplete) return;
+
+    if (stage === 'memorize') {
+      const hintMsg = language === 'te'
+        ? 'సూచన: పనుల వరుస క్రమాన్ని శ్రద్ధగా గుర్తుంచుకోండి. ఆపై "నాకు గుర్తుంది" బటన్ నొక్కండి.'
+        : language === 'hi'
+        ? 'सुझाव: कार्यों के सही क्रम को याद रखें। इसके बाद "मुझे याद है" बटन दबाएं।'
+        : 'Hint: Memorize the order of tasks from top to bottom. Then tap "I Remember, Start Sequence".';
+
+      if (onProvideCustomHint) onProvideCustomHint(hintMsg);
+      else VoiceService.speak(hintMsg, language, true);
+      return;
+    }
+
+    // In recall mode: find the item that should go into the next slot
+    const nextSlot = selectedItems.length;
+    if (nextSlot < targetSequence.length) {
+      const targetItem = targetSequence[nextSlot];
+      setHintedItemId(targetItem.id);
+
+      const hintMsg = language === 'te'
+        ? `సూచన: తదుపరి పని "${targetItem.label}" (${targetItem.emoji}). క్రింది ఎంపికలలో దాన్ని ఎంచుకోండి!`
+        : language === 'hi'
+        ? `सुझाव: अगला कार्य "${targetItem.label}" (${targetItem.emoji}) है। नीचे दिए गए विकल्पों में से इसे चुनें!`
+        : `Hint: The next task in the sequence is "${targetItem.label}" (${targetItem.emoji}). Tap it below to place in slot ${nextSlot + 1}!`;
+
+      if (onProvideCustomHint) {
+        onProvideCustomHint(hintMsg);
+      } else {
+        VoiceService.speak(hintMsg, language, true);
+      }
+
+      setTimeout(() => {
+        setHintedItemId(null);
+      }, 5000);
+    }
+  };
+
+  useEffect(() => {
+    if (hintTrigger && hintTrigger !== lastHintTriggerRef.current) {
+      lastHintTriggerRef.current = hintTrigger;
+      triggerHint();
+    }
+  }, [hintTrigger]);
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -384,15 +434,27 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {uiTexts.reconstructedTitle[language] || uiTexts.reconstructedTitle.en} ({selectedItems.length}/{targetSequence.length})
               </span>
-              {selectedItems.length > 0 && !isComplete && (
-                <button
-                  onClick={handleUndo}
-                  className="text-xs font-semibold text-slate-700 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 cursor-pointer"
-                >
-                  <RotateCcw size={12} />
-                  <span>{uiTexts.undo[language] || uiTexts.undo.en}</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {!isComplete && (
+                  <button
+                    onClick={triggerHint}
+                    className="text-xs font-bold text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95 min-h-[30px]"
+                    title="Get a hint for the next task"
+                  >
+                    <Lightbulb size={13} className="text-amber-600 dark:text-amber-400" />
+                    <span>{language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint'}</span>
+                  </button>
+                )}
+                {selectedItems.length > 0 && !isComplete && (
+                  <button
+                    onClick={handleUndo}
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 cursor-pointer min-h-[30px] px-2"
+                  >
+                    <RotateCcw size={12} />
+                    <span>{uiTexts.undo[language] || uiTexts.undo.en}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -450,16 +512,28 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
                 {uiTexts.chooseNext[language] || uiTexts.chooseNext.en}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {poolItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleSelectPoolItem(item)}
-                    className="p-3.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 bg-white dark:bg-slate-800 text-black dark:text-white text-left flex items-center gap-3 shadow-xs transition-all cursor-pointer active:scale-98"
-                  >
-                    <span className="text-2xl">{item.emoji}</span>
-                    <span className="text-xs sm:text-sm font-bold">{item.label}</span>
-                  </button>
-                ))}
+                {poolItems.map((item) => {
+                  const isHinted = item.id === hintedItemId;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSelectPoolItem(item)}
+                      className={`p-3.5 rounded-xl border-2 text-left flex items-center gap-3 shadow-xs transition-all cursor-pointer active:scale-98 ${
+                        isHinted
+                          ? 'border-amber-400 dark:border-amber-400 bg-amber-50 dark:bg-amber-950/80 ring-4 ring-amber-400/50 text-amber-900 dark:text-amber-100 animate-pulse'
+                          : 'border-slate-300 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 bg-white dark:bg-slate-800 text-black dark:text-white'
+                      }`}
+                    >
+                      <span className="text-2xl">{item.emoji}</span>
+                      <span className="text-xs sm:text-sm font-bold flex-1">{item.label}</span>
+                      {isHinted && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-black">
+                          💡 {language === 'te' ? 'తదుపరి పని' : language === 'hi' ? 'अगला कार्य' : 'Next Step'}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

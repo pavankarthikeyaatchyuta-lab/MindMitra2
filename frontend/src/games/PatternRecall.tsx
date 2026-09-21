@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
-import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowRight, Lightbulb } from 'lucide-react';
 import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
@@ -17,6 +17,8 @@ export interface GameProps {
   userId: number;
   gameSessionId: number;
   onComplete: (metrics: GameMetrics) => void;
+  hintTrigger?: number;
+  onProvideCustomHint?: (hint: string) => void;
 }
 
 const SYMBOLS = ['⭐', '🔷', '🔴', '🔺', '🟩', '☀️', '🌙', '🌸'];
@@ -30,7 +32,7 @@ interface RoundData {
   }[];
 }
 
-export default function PatternRecall({ difficulty, userId, gameSessionId, onComplete }: GameProps) {
+export default function PatternRecall({ difficulty, userId, gameSessionId, onComplete, hintTrigger, onProvideCustomHint }: GameProps) {
   const { t, language } = useTranslation();
   const patternLength = Math.min(5, Math.max(2, difficulty + 1)); // Level 1 = 2 symbols, Level 2 = 3, etc.
   const totalRounds = 3;
@@ -48,6 +50,7 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
   const [countdown, setCountdown] = useState(observeTime);
 
   const idleTimerRef = useRef<any>(null);
+  const lastHintTriggerRef = useRef(hintTrigger);
 
   const stats = useRef({
     correctRounds: 0,
@@ -57,6 +60,40 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     startTime: 0,
     lastActionTime: 0
   });
+
+  const triggerHint = () => {
+    if (isLocked || !rounds[currentRoundIdx]) return;
+
+    if (stage === 'recall') {
+      setStage('memorize');
+      setCountdown(5);
+
+      const hintMsg = language === 'te'
+        ? 'సూచన: నక్షత్రాల క్రమాన్ని మరో 5 సెకన్ల పాటు చూపిస్తున్నాము. శ్రద్ధగా గమనించండి!'
+        : language === 'hi'
+        ? 'सुझाव: तारों के क्रम को 5 सेकंड के लिए फिर से दिखाया जा रहा है। ध्यान से देखें!'
+        : 'Hint: Replaying the star pattern for 5 seconds. Watch the order closely!';
+
+      if (onProvideCustomHint) onProvideCustomHint(hintMsg);
+      else VoiceService.speak(hintMsg, language, true);
+    } else {
+      const hintMsg = language === 'te'
+        ? 'సూచన: మొదటి నుండి చివరి వరకు నక్షత్రాల క్రమాన్ని గుర్తుంచుకోండి.'
+        : language === 'hi'
+        ? 'सुझाव: पहले से अंतिम तारे के क्रम को याद रखें।'
+        : 'Hint: Focus on the sequence from left to right.';
+
+      if (onProvideCustomHint) onProvideCustomHint(hintMsg);
+      else VoiceService.speak(hintMsg, language, true);
+    }
+  };
+
+  useEffect(() => {
+    if (hintTrigger && hintTrigger !== lastHintTriggerRef.current) {
+      lastHintTriggerRef.current = hintTrigger;
+      triggerHint();
+    }
+  }, [hintTrigger]);
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -242,8 +279,20 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
           </p>
         </div>
 
-        <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm">
-          Round {currentRoundIdx + 1} / {rounds.length}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={triggerHint}
+            type="button"
+            disabled={isLocked}
+            className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors cursor-pointer min-h-[36px]"
+            title={stage === 'recall' ? 'Replay the pattern for 5 seconds' : 'Get a hint'}
+          >
+            <Lightbulb size={14} className="text-amber-600 dark:text-amber-400" />
+            <span>{stage === 'recall' ? (language === 'te' ? 'రీప్లే (Replay)' : language === 'hi' ? 'रीप्ले (Replay)' : 'Replay Pattern') : (language === 'te' ? 'సూచన (Hint)' : language === 'hi' ? 'सुझाव (Hint)' : 'Hint')}</span>
+          </button>
+          <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm min-h-[36px] flex items-center justify-center">
+            Round {currentRoundIdx + 1} / {rounds.length}
+          </div>
         </div>
       </div>
 
