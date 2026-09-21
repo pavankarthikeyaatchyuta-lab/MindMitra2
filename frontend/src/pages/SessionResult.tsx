@@ -126,25 +126,26 @@ export default function SessionResult() {
 
   return (
     <AppLayout mode="user">
-      <div className="max-w-xl mx-auto w-full flex flex-col gap-5 animate-in fade-in">
+      <div className="max-w-xl mx-auto w-full flex flex-col gap-3.5 sm:gap-5 animate-in fade-in">
         {/* Celebration Header */}
         <div className="text-center">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 shadow-xs">
-            <CheckCircle2 size={32} />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-xs">
+            <CheckCircle2 size={26} className="sm:w-8 sm:h-8" />
           </div>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="text-xs uppercase font-black tracking-wider text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+            <span className="text-[11px] sm:text-xs uppercase font-black tracking-wider text-emerald-600 dark:text-emerald-400">
               Activity Complete
             </span>
             <button
               onClick={handleSpeakResults}
               className="p-1 rounded-full text-slate-400 hover:text-emerald-600"
               title="Listen to summary"
+              aria-label="Listen to activity summary"
             >
-              <Volume2 size={16} />
+              <Volume2 size={15} />
             </button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
             {result.activityTitle}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
@@ -153,31 +154,31 @@ export default function SessionResult() {
         </div>
 
         {/* Behavioral Metrics Grid */}
-        <div className="card p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-sm">
-          <div className="grid grid-cols-3 gap-3 text-center mb-4">
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+        <div className="card p-3.5 sm:p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-sm">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center mb-3 sm:mb-4">
+            <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5 sm:mb-1 truncate">
                 Accuracy
               </span>
-              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-xl sm:text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">
                 {result.accuracy}%
               </span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+            <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5 sm:mb-1 truncate">
                 Response
               </span>
-              <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
+              <span className="text-xl sm:text-2xl md:text-3xl font-black text-blue-600 dark:text-blue-400">
                 {(result.avgResponseTimeMs / 1000).toFixed(1)}s
               </span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+            <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5 sm:mb-1 truncate">
                 Consistency
               </span>
-              <span className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200 flex items-center justify-center h-8 sm:h-9">
+              <span className="text-xs sm:text-base md:text-lg font-black text-slate-800 dark:text-slate-200 flex items-center justify-center h-7 sm:h-9">
                 {result.consistency}
               </span>
             </div>

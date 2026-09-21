@@ -362,14 +362,14 @@ def init_db():
                 except Exception as alter_err:
                     logger.warning(f"Failed to add column {col} to {tbl}: {alter_err}")
 
-        # If caregivers table is empty, seed demo caregiver
-        c.execute("SELECT COUNT(*) as count FROM caregivers")
+        # Ensure default demo caregiver exists
+        c.execute("SELECT COUNT(*) as count FROM caregivers WHERE email = 'pavan@mindmitra.com'")
         if c.fetchone()["count"] == 0:
             now = datetime.datetime.now().isoformat()
             pwd_hash = hash_password("mindmitra123")
             c.execute("""
-                INSERT INTO caregivers (id, name, email, password_hash, created_at, updated_at, active)
-                VALUES (1, 'Pavan Kumar', 'pavan@mindmitra.com', ?, ?, ?, TRUE)
+                INSERT INTO caregivers (name, email, password_hash, created_at, updated_at, active)
+                VALUES ('Pavan Kumar', 'pavan@mindmitra.com', ?, ?, ?, 1)
             """, (pwd_hash, now, now))
 
         sync_postgres_sequences(conn)

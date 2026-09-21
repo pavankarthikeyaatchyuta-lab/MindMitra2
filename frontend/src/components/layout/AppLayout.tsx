@@ -51,23 +51,23 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
-      {/* 1. TOP HEADER (Simplified, no duplicate nav links) */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-300 dark:border-slate-800 px-4 sm:px-6 py-2.5 transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      {/* 1. TOP HEADER (Refined & Compact on Mobile to Prevent Overflow) */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-300 dark:border-slate-800 px-3 sm:px-6 py-2 sm:py-2.5 transition-colors">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* Brand Logo & Name */}
-          <Link to={mode === 'caregiver' ? '/caregiver' : '/home'} className="flex items-center gap-2.5 group min-h-[44px]">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs group-hover:bg-blue-700 transition-colors shrink-0">
-              <Brain size={20} />
+          <Link to={mode === 'caregiver' ? '/caregiver' : '/home'} className="flex items-center gap-2 group min-h-[40px] shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs group-hover:bg-blue-700 transition-colors shrink-0">
+              <Brain size={18} className="sm:w-5 sm:h-5" />
             </div>
             <div>
-              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 sm:gap-2">
                 MindMitra
                 {mode === 'caregiver' ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  <span className="hidden md:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                     Caregiver
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  <span className="hidden md:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                     Individual
                   </span>
                 )}
@@ -78,8 +78,8 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
             </div>
           </Link>
 
-          {/* Current Profile / Role Indicator & Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Controls: Theme & Sign Out */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {currentUser && mode === 'user' && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -94,13 +94,13 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
               </div>
             )}
 
-            {/* Light / Dark Theme Toggle */}
+            {/* Light / Dark Theme Toggle (Compact on mobile) */}
             <ThemeToggle />
 
-            {/* Logout Button */}
+            {/* Sign Out Button */}
             <button
               onClick={handleLogout}
-              className="p-2 min-h-[44px] min-w-[44px] rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-colors flex items-center justify-center cursor-pointer"
+              className="p-1.5 sm:p-2 min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-colors flex items-center justify-center cursor-pointer shrink-0"
               title="Sign Out"
               aria-label="Sign Out"
             >
@@ -235,17 +235,17 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
         </aside>
 
         {/* PAGE CONTENT CONTAINER */}
-        <main className="flex-1 flex flex-col p-4 sm:p-6 pb-24 md:pb-8 w-full max-w-full overflow-x-hidden">
+        <main className="flex-1 flex flex-col p-3.5 sm:p-5 md:p-6 pb-20 md:pb-8 w-full max-w-full overflow-x-hidden">
           {children}
         </main>
       </div>
 
       {/* ============================================================
           3. PHONE BOTTOM NAVIGATION (< 768px ONLY)
-          Large touch targets (minimum 48x48px), thumb-friendly
+          Large touch targets (minimum 48x48px), compact 13-14px labels
          ============================================================ */}
       <nav 
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-300 dark:border-slate-800 px-2 py-1 flex justify-around items-center shadow-lg transition-colors"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-300 dark:border-slate-800 px-1 py-1 flex justify-around items-center shadow-lg transition-colors"
         aria-label="Mobile Bottom Navigation"
       >
         {mode === 'user' ? (
@@ -262,8 +262,8 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
                     : 'text-slate-600 dark:text-slate-400 font-bold hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
-                <Icon size={22} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
-                <span className="text-[11px] mt-0.5 tracking-tight">{item.label}</span>
+                <Icon size={21} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
+                <span className="text-[13px] mt-0.5 tracking-tight font-bold">{item.label}</span>
               </Link>
             );
           })
@@ -281,8 +281,8 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
                     : 'text-slate-600 dark:text-slate-400 font-bold hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
-                <Icon size={22} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
-                <span className="text-[11px] mt-0.5 tracking-tight">{item.label}</span>
+                <Icon size={21} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
+                <span className="text-[13px] mt-0.5 tracking-tight font-bold">{item.label}</span>
               </Link>
             );
           })

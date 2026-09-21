@@ -122,14 +122,14 @@ export default function MyPattern() {
 
   return (
     <AppLayout mode="user">
-      <div className="max-w-3xl mx-auto w-full flex flex-col gap-5 animate-in fade-in">
+      <div className="max-w-3xl mx-auto w-full flex flex-col gap-3.5 sm:gap-5 animate-in fade-in">
         {/* Header with Spoken Audio Trigger */}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-xs uppercase font-black tracking-wider text-blue-600 dark:text-blue-400 block mb-0.5">
+            <span className="text-[11px] uppercase font-black tracking-wider text-blue-600 dark:text-blue-400 block mb-0.5">
               Personal Behavioral Memory
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               My Personal Pattern
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -139,8 +139,9 @@ export default function MyPattern() {
 
           <button
             onClick={handleSpeakSummary}
-            className="touch-target-48 px-3.5 py-2 rounded-2xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-colors shrink-0 cursor-pointer"
+            className="touch-target-48 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-colors shrink-0 cursor-pointer"
             title="Listen to summary"
+            aria-label="Listen to personal pattern summary"
           >
             <Volume2 size={16} />
             <span className="hidden sm:inline">Listen</span>
@@ -148,41 +149,41 @@ export default function MyPattern() {
         </div>
 
         {/* 1. BASELINE STATUS & CALIBRATION CARD */}
-        <div className="card p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-sm text-center">
-          <div className="inline-flex items-center gap-2 mb-3">
+        <div className="card p-4 sm:p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-sm text-center">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
             {isCalibrating ? (
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5">
+              <span className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 Building Baseline ({sessionCount} of 3 sessions)
               </span>
             ) : currentStatus === 'MEANINGFUL_DEVIATION' ? (
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5">
+              <span className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5">
                 <TrendingDown size={14} />
                 Meaningful Variation from Baseline
               </span>
             ) : (
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5">
+              <span className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-black bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5">
                 <CheckCircle2 size={14} />
                 Pattern Steady & Consistent
               </span>
             )}
           </div>
 
-          <p className="text-sm font-bold text-slate-900 dark:text-white max-w-md mx-auto mb-4 leading-relaxed">
+          <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white max-w-md mx-auto mb-3 sm:mb-4 leading-relaxed">
             {isCalibrating
               ? 'Your phone is observing your natural response speed and touch cadence to learn your baseline range.'
               : 'Your recent interactions remain comfortably aligned with your established personal pattern.'}
           </p>
 
           {/* Progress Bar */}
-          <div className="max-w-md mx-auto mb-2">
+          <div className="max-w-md mx-auto mb-1">
             <div className="flex justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
               <span>Baseline Calibration Progress</span>
               <span className="text-blue-600 dark:text-blue-400 font-black">
                 {Math.min(100, Math.round((sessionCount / 3) * 100))}%
               </span>
             </div>
-            <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="w-full h-2.5 sm:h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, Math.max(sessionCount > 0 ? 33 : 10, (sessionCount / 3) * 100))}%` }}
@@ -191,51 +192,51 @@ export default function MyPattern() {
           </div>
         </div>
 
-        {/* 2. BEHAVIORAL METRICS GRID */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="card p-4 text-center border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
-            <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+        {/* 2. BEHAVIORAL METRICS GRID (Compact on Mobile) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="card p-2.5 sm:p-4 text-center border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5 sm:mb-1 truncate">
               Typical Accuracy
             </span>
-            <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-xl sm:text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">
               {sessionCount > 0 ? `${Math.round(medianAcc * 100)}%` : '--'}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1">Personal Median</span>
+            <span className="text-[9px] sm:text-[10px] text-slate-400 block mt-0.5">Median</span>
           </div>
 
-          <div className="card p-4 text-center border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
-            <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+          <div className="card p-2.5 sm:p-4 text-center border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5 sm:mb-1 truncate">
               Tap Latency
             </span>
-            <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
+            <span className="text-xl sm:text-2xl md:text-3xl font-black text-blue-600 dark:text-blue-400">
               {sessionCount > 0 ? `${(medianLat / 1000).toFixed(1)}s` : '--'}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1">Inspection Speed</span>
+            <span className="text-[9px] sm:text-[10px] text-slate-400 block mt-0.5">Speed</span>
           </div>
 
-          <div className="card p-4 text-center border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
-            <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+          <div className="card p-2.5 sm:p-4 text-center border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5 sm:mb-1 truncate">
               Corrections
             </span>
-            <span className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
+            <span className="text-xl sm:text-2xl md:text-3xl font-black text-purple-600 dark:text-purple-400">
               {sessionCount > 0 ? medianCorr : '--'}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1">Per Activity</span>
+            <span className="text-[9px] sm:text-[10px] text-slate-400 block mt-0.5">Per Activity</span>
           </div>
         </div>
 
         {/* 3. LONGITUDINAL TREND CHART (Responsive) */}
-        <div className="card p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
-          <div className="flex items-center justify-between mb-4">
+        <div className="card p-3.5 sm:p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
+          <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
                 Longitudinal Accuracy Trend
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 Tracking session accuracy consistency over time
               </p>
             </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
               {history.length} Sessions
             </span>
           </div>

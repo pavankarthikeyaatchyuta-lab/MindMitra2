@@ -122,27 +122,27 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150 relative">
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-3.5 sm:p-6 bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
+      <div className="w-full max-w-md flex justify-end items-center mb-2 sm:mb-4">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md mt-10 sm:mt-0">
+      <div className="w-full max-w-md">
         {/* Branding Header */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-md mb-3 text-white hover:bg-blue-700 transition-all transform hover:scale-105">
-            <Brain size={34} />
+        <div className="text-center mb-5 sm:mb-8">
+          <Link to="/" className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-600 shadow-md mb-2 sm:mb-3 text-white hover:bg-blue-700 transition-all transform hover:scale-105">
+            <Brain size={30} className="sm:w-8 sm:h-8" />
           </Link>
-          <h1 className="text-3xl font-black text-black dark:text-white tracking-tight">MindMitra</h1>
-          <p className="text-slate-900 dark:text-slate-300 mt-1 text-sm font-bold">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">MindMitra</h1>
+          <p className="text-slate-600 dark:text-slate-300 mt-0.5 sm:mt-1 text-xs sm:text-sm font-bold">
             Caregiver Portal & Cognitive Companion
           </p>
         </div>
 
         {/* Auth Container Card */}
-        <div className="card p-6 sm:p-8 shadow-sm border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl">
+        <div className="card p-4 sm:p-8 shadow-sm border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl">
           {/* Form Tabs */}
-          <div className="flex border-b border-slate-300 dark:border-slate-800 pb-3 mb-6">
+          <div className="flex border-b border-slate-300 dark:border-slate-800 pb-2 sm:pb-3 mb-4 sm:mb-6">
             <button
               type="button"
               onClick={() => {
