@@ -92,7 +92,7 @@ export default function Methodology() {
               <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1">3-Tier Natural Language Explainability</h3>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Translates statistical deviations into understandable caregiver summaries via Google Gemini 2.0 Flash / Nemotron-3 Super.
+                  Translates statistical deviations into understandable caregiver summaries via Private Behavioral AI / Explainable Rule Engine.
                 </p>
               </div>
             </div>

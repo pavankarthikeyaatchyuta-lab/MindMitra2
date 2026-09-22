@@ -93,7 +93,7 @@ flowchart TD
     subgraph "Backend Cloud & API Services (FastAPI)"
         Auth["Caregiver Auth & Security\n(PBKDF2 Password Hashing + JWT)"]
         SyncAPI["Multi-User Session Sync & Telemetry\n(/api/sessions, /api/baselines)"]
-        ExplainAPI["Explainable AI Guidance\n(Gemini / Local Rule Engine Fallback)"]
+        ExplainAPI["Explainable AI Guidance\n(Private Behavioral AI / Local Rule Engine Fallback)"]
     end
 
     UI --> TouchSense

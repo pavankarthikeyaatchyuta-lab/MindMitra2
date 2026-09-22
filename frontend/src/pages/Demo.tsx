@@ -17,7 +17,7 @@ export default function Demo() {
     { title: "4. Observe Adaptive ML Difficulty", desc: "Reviews how the Random Forest classifier dynamically calibrated difficulty levels (Level 1–4) with detailed reasoning." },
     { title: "5. Switch to Sunita Devi (Recent Change)", desc: "Analyzes a profile demonstrating an observed shift in latency and accuracy." },
     { title: "6. Inspect 'Why Was This Highlighted?'", desc: "Checks structured evidence metrics comparing current performance against personal baselines." },
-    { title: "7. Generate Gemini Caregiver Summary", desc: "Produces an empathetic, non-diagnostic AI explanation with strict medical disclaimer." },
+    { title: "7. Generate Caregiver Summary", desc: "Produces an empathetic, non-diagnostic AI explanation with strict medical disclaimer." },
     { title: "8. Test Familiar Person Photos & Privacy", desc: "Verifies caregiver photo upload, validation, consent confirmation, and zero external LLM exposure." },
     { title: "9. Simulate Offline Gameplay & Sync", desc: "Saves gameplay events locally and simulates cloud synchronization upon reconnection." }
   ];
@@ -43,7 +43,7 @@ export default function Demo() {
     } else if (activeStep === 4) {
       setStatusMsg("Sunita Devi selected. Recent performance delta detected (-18%).");
     } else if (activeStep === 6) {
-      setStatusMsg("Gemini synthesized empathetic caregiver summary with prototype disclaimer.");
+      setStatusMsg("Synthesized empathetic caregiver summary with prototype disclaimer.");
     } else if (activeStep === 8) {
       setStatusMsg("Offline telemetry sync completed.");
     }

@@ -26,7 +26,7 @@ While our primary **beneficiary** is the elderly individual, our **paying custom
 - **Target Persona**: Working adult son or daughter supporting aging parents, in-laws, or grandparents.
 - **Value Proposition**: 
   - **One Account, Multiple Profiles**: Single subscription covers parents and relatives without separate app accounts.
-  - **Visibility & Longitudinal Baselines**: Plain-language AI explanations (Gemini / Nemotron) provide early awareness of subtle behavioral variations without medical panic.
+  - **Visibility & Longitudinal Baselines**: Plain-language AI explanations (Behavioral AI / Local Engine) provide early awareness of subtle behavioral variations without medical panic.
   - **Trusted Direct Connection**: 1-tap peer-to-peer WebRTC voice calling and shared voice memory archives.
 - **Buying Rationale**: Families pay for **convenience, personalization, and actionable visibility**, not simply a set of games.
 

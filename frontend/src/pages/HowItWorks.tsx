@@ -165,7 +165,7 @@ export default function HowItWorks() {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">3-Tier Explainable AI & Non-Diagnostic Guardrails</h2>
           </div>
           <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
-            Caregiver summaries are generated using a 3-tier cascade (Tier 1: Google Gemini 2.0 Flash ➔ Tier 2: Nemotron-3 Super ➔ Tier 3: Deterministic Rule-Based Engine).
+            Caregiver summaries are generated using a 3-tier cascade (Tier 1: Private Cognitive AI ➔ Tier 2: Behavioral Language Model ➔ Tier 3: Deterministic Rule-Based Engine).
           </p>
           <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-3">
             <ShieldCheck size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />

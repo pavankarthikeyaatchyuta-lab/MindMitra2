@@ -85,7 +85,7 @@ export default function Insights() {
         for (const ins of insights) {
           expMap[ins.domain || ins.game_type || ''] = {
             text: ins.insight,
-            provider: ins.provider || 'gemini-2.0-flash',
+            provider: ins.provider || 'mindmitra-behavioral-ai',
           };
         }
         setExplanations(expMap);
@@ -108,7 +108,7 @@ export default function Insights() {
       );
       setExplanations(prev => ({
         ...prev,
-        [domainKey]: { text: res.explanation, provider: res.provider || 'gemini-2.0-flash' },
+        [domainKey]: { text: res.explanation, provider: res.provider || 'mindmitra-behavioral-ai' },
       }));
     } catch {
       setExplanations(prev => ({
@@ -194,7 +194,7 @@ export default function Insights() {
         <div className="card p-4 border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 text-xs flex items-center gap-3">
           <Info size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
           <span className="text-slate-700 dark:text-slate-300">
-            Insights are plain-language behavioral summaries synthesized by Google Gemini 2.0 Flash to assist caregivers in understanding routine game engagement.
+            Insights are plain-language behavioral summaries synthesized to assist caregivers in understanding routine game engagement.
           </span>
         </div>
 

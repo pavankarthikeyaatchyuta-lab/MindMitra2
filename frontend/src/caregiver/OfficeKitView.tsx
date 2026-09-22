@@ -292,7 +292,7 @@ export default function OfficeKitView() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <ShieldCheck size={16} className="text-emerald-500 dark:text-emerald-400" />
-                  <span>3-Tier Explainable AI Gateway (Gemini 2.0 Flash / Nemotron / Rule Fallback)</span>
+                  <span>3-Tier Explainable AI Gateway (Local LLM / Private Behavioral AI / Rule Fallback)</span>
                 </div>
 
                 <button
