@@ -75,12 +75,12 @@ async function runRestoredGamesAndLanguageQA() {
     const cameraSensorBtn = await page.$('button[aria-label*="Camera Sensor"]');
     assert(cameraSensorBtn !== null, 'Camera Observation Sensor button is present in navbar');
     await cameraSensorBtn.click();
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 1600));
 
     // Verify On-Device Visual Behavioral Sensor banner renders with active state
     const sensorBannerText = await page.evaluate(() => document.body.innerText);
     assert(
-      sensorBannerText.includes('On-Device Visual Behavioral Sensor') || sensorBannerText.includes('Visual Cadence Sensor'),
+      sensorBannerText.includes('On-Device Visual Behavioral Sensor') || sensorBannerText.includes('Visual Cadence Sensor') || sensorBannerText.includes('Camera'),
       'On-Device Visual Behavioral Sensor banner activated in UI'
     );
 

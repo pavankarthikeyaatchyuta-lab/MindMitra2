@@ -29,16 +29,19 @@ export interface VoiceRecallPrompt {
 }
 
 export function getPromptQuestion(prompt: VoiceRecallPrompt, lang: Language = 'en'): string {
+  if (!prompt) return '';
   if (typeof prompt.question === 'string') return prompt.question;
   return prompt.question[lang] || prompt.question.en || '';
 }
 
 export function getPromptCategory(prompt: VoiceRecallPrompt, lang: Language = 'en'): string {
+  if (!prompt) return '';
   if (typeof prompt.category === 'string') return prompt.category;
   return prompt.category[lang] || prompt.category.en || '';
 }
 
 export function getPromptKeywords(prompt: VoiceRecallPrompt, lang: Language = 'en'): string[] {
+  if (!prompt) return [];
   if (Array.isArray(prompt.sampleKeywords)) return prompt.sampleKeywords;
   return prompt.sampleKeywords[lang] || prompt.sampleKeywords.en || [];
 }
@@ -116,22 +119,28 @@ export class VoiceSensorTracker {
 
   public isSupported(): boolean {
     return typeof window !== 'undefined' && (
-      'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
+      'webkitSpeechRecognition' in window || 'SpeechRecognition' in window || (navigator?.mediaDevices && !!navigator.mediaDevices.getUserMedia)
     );
   }
 
-  public startListening(
+  public async startListening(
     prompt: VoiceRecallPrompt,
     language: Language = 'en',
-    onStatusChange: (status: 'listening' | 'speaking' | 'completed' | 'error') => void,
+    onStatusChange: (status: 'idle' | 'listening' | 'speaking' | 'completed' | 'error') => void,
     onTranscriptUpdate: (transcript: string) => void
   ): Promise<VoiceBehavioralVector> {
-    return new Promise((resolve, reject) => {
-      if (!this.isSupported()) {
-        reject(new Error('Speech recognition not supported in this browser/device.'));
-        return;
+    // Proactively verify / request microphone permission so mobile browsers do not immediately fail
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Release stream so speech recognition service has exclusive access to the audio channel
+        stream.getTracks().forEach(t => t.stop());
+      } catch (err) {
+        console.warn('Microphone permission check note:', err);
       }
+    }
 
+    return new Promise((resolve, reject) => {
       this.promptEndTime = performance.now();
       this.firstWordTime = 0;
       this.lastWordTime = 0;
@@ -141,10 +150,24 @@ export class VoiceSensorTracker {
       this.recognitionCount = 0;
 
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      const recog = new SpeechRecognition();
+
+      if (!SpeechRecognition) {
+        // Device lacks Web Speech API; reject gracefully so UI can activate touch/sample chip mode
+        reject(new Error('Speech recognition not available on this browser.'));
+        return;
+      }
+
+      let recog: any;
+      try {
+        recog = new SpeechRecognition();
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
       recog.continuous = true;
       recog.interimResults = true;
-      // Configure speech recognition locale accurately for Telugu, Hindi, or English
+      recog.maxAlternatives = 3;
       recog.lang = language === 'te' ? 'te-IN' : language === 'hi' ? 'hi-IN' : 'en-IN';
 
       this.recognition = recog;
@@ -164,11 +187,11 @@ export class VoiceSensorTracker {
         const now = performance.now();
         const responseLatencyMs = this.firstWordTime > 0
           ? Math.round(this.firstWordTime - this.promptEndTime)
-          : 3500;
+          : 2500;
 
         const speechDurationMs = this.lastWordTime > 0 && this.firstWordTime > 0
           ? Math.round(this.lastWordTime - this.firstWordTime)
-          : 4000;
+          : 3500;
 
         const cumulativePauseDurationMs = this.pauses.reduce((a, b) => a + b, 0);
 
@@ -181,14 +204,13 @@ export class VoiceSensorTracker {
             matchedCount++;
           }
         }
-        // Approximate count by clause separation if keyword list didn't capture dialect
         const clauseCount = finalTranscript.split(/,|and|then|\s{2,}/i).filter(s => s.trim().length > 2).length;
         const effectiveCount = Math.max(matchedCount, Math.min(clauseCount, prompt.expectedItemCount));
         const sequenceCompleteness = Math.min(1.0, effectiveCount / prompt.expectedItemCount);
 
         const avgConfidence = this.recognitionCount > 0
           ? Math.round((this.confidenceSum / this.recognitionCount) * 100) / 100
-          : 0.85;
+          : 0.88;
 
         onStatusChange('completed');
 
@@ -198,9 +220,9 @@ export class VoiceSensorTracker {
           pause_duration_ms: Math.round(cumulativePauseDurationMs),
           number_of_pauses: this.pauses.length,
           sequence_completeness: Math.round(sequenceCompleteness * 100) / 100,
-          task_completion: sequenceCompleteness >= 0.66,
+          task_completion: sequenceCompleteness >= 0.5 || this.wordsSpoken.length >= 2,
           transcript_confidence: avgConfidence,
-          word_count: this.wordsSpoken.length,
+          word_count: Math.max(this.wordsSpoken.length, matchedCount),
           timestamp: new Date().toISOString(),
         };
 
@@ -242,31 +264,48 @@ export class VoiceSensorTracker {
         if (silenceTimer) clearTimeout(silenceTimer);
         silenceTimer = setTimeout(() => {
           finishRecognition();
-        }, 3000); // 3 seconds of silence signifies completion
+        }, 3200);
       };
 
       recog.onerror = (err: any) => {
-        onStatusChange('error');
+        console.warn('Speech recognition notice:', err?.error, err);
+
+        // 'no-speech' is a non-fatal event in mobile speech recognition (elder paused before answering)
+        if (err?.error === 'no-speech') {
+          if (this.isListening) {
+            onStatusChange('listening');
+          }
+          return;
+        }
+
+        // If the elder already spoke words, complete gracefully instead of failing
+        if (this.wordsSpoken.length > 0) {
+          finishRecognition();
+          return;
+        }
+
         if (this.isListening) {
           this.isListening = false;
-          // Gracefully resolve with baseline approximation if audio occurred, or reject
-          if (this.wordsSpoken.length > 0) {
-            finishRecognition();
-          } else {
-            reject(err);
-          }
+          onStatusChange('error');
+          reject(err);
         }
       };
 
       recog.onend = () => {
         if (this.isListening) {
-          finishRecognition();
+          if (this.wordsSpoken.length > 0) {
+            finishRecognition();
+          } else {
+            this.isListening = false;
+            onStatusChange('idle');
+          }
         }
       };
 
       try {
         recog.start();
       } catch (e) {
+        this.isListening = false;
         reject(e);
       }
     });
