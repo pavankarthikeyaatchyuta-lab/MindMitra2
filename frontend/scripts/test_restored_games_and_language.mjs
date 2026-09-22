@@ -96,27 +96,17 @@ async function runRestoredGamesAndLanguageQA() {
     await page.goto(`${BASE_URL}/activity/routine`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('.card', { timeout: 5000 });
 
-    // Verify Step 1: Memorize stage renders
+    // Verify that the answer/flow is NOT displayed first
     let routineBodyText = await page.evaluate(() => document.body.innerText);
     assert(
-      routineBodyText.includes('Standard Daily Order') || routineBodyText.includes('Schedule'),
-      'Step 1 Memorize stage: Standard Daily Order displayed'
+      !routineBodyText.includes('Standard Daily Order') && !routineBodyText.includes('ప్రామాణిక దినచర్య'),
+      'Direct Recall: Does NOT display answer or sequence flow first'
     );
 
-    // Find and click "I Remember, Start Sequence" button
-    const startSeqBtn = await page.evaluateHandle(() => {
-      const btns = Array.from(document.querySelectorAll('button'));
-      return btns.find(b => b.innerText.includes('Start Sequence') || b.innerText.includes('గుర్తుంది') || b.innerText.includes('क्रम शुरू'));
-    });
-    assert(startSeqBtn !== null, 'Found "Start Sequence" button');
-    await startSeqBtn.click();
-    await new Promise(r => setTimeout(r, 500));
-
-    // Verify Step 2-4: Recall Stage — slots & available task chips render
-    routineBodyText = await page.evaluate(() => document.body.innerText);
+    // Verify Reconstructive Sequence slots & available task chips render immediately
     assert(
       routineBodyText.includes('Reconstructed Sequence') || routineBodyText.includes('Available Tasks'),
-      'Step 2-4 Recall Stage: Sequence slots and Available Tasks displayed'
+      'Reconstructive Gameplay: Sequence slots and Available Tasks displayed directly'
     );
 
     // Tap first available item chip in pool

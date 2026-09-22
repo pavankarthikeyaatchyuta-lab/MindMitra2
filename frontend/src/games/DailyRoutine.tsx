@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import { Language } from '../types';
-import { CheckCircle2, RotateCcw, ArrowRight, Sparkles, Check, RefreshCw, Lightbulb } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Sparkles, Check, RefreshCw, Lightbulb } from 'lucide-react';
 import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
@@ -99,7 +99,6 @@ const ROUTINE_CATEGORIES: RoutineCategoryDef[] = [
 export default function DailyRoutine({ difficulty, userId, gameSessionId, onComplete, hintTrigger, onProvideCustomHint }: GameProps) {
   const { t, language } = useTranslation();
 
-  const [stage, setStage] = useState<'memorize' | 'recall'>('memorize');
   const [scheduleTitle, setScheduleTitle] = useState('');
   const [targetSequence, setTargetSequence] = useState<DisplayRoutineItem[]>([]);
   const [poolItems, setPoolItems] = useState<DisplayRoutineItem[]>([]);
@@ -124,19 +123,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   const triggerHint = () => {
     if (isComplete) return;
 
-    if (stage === 'memorize') {
-      const hintMsg = language === 'te'
-        ? 'సూచన: పనుల వరుస క్రమాన్ని శ్రద్ధగా గుర్తుంచుకోండి. ఆపై "నాకు గుర్తుంది" బటన్ నొక్కండి.'
-        : language === 'hi'
-        ? 'सुझाव: कार्यों के सही क्रम को याद रखें। इसके बाद "मुझे याद है" बटन दबाएं।'
-        : 'Hint: Memorize the order of tasks from top to bottom. Then tap "I Remember, Start Sequence".';
-
-      if (onProvideCustomHint) onProvideCustomHint(hintMsg);
-      else VoiceService.speak(hintMsg, language, true);
-      return;
-    }
-
-    // In recall mode: find the item that should go into the next slot
+    // Find the item that should go into the next slot
     const nextSlot = selectedItems.length;
     if (nextSlot < targetSequence.length) {
       const targetItem = targetSequence[nextSlot];
@@ -204,7 +191,6 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     // Shuffle pool items
     setPoolItems([...chosenItems].sort(() => Math.random() - 0.5));
     setSelectedItems([]);
-    setStage('memorize');
     setIsComplete(false);
 
     stats.current = {
@@ -215,16 +201,11 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
       lastActionTime: Date.now(),
       completed: false,
     };
-  };
-
-  const handleStartRecall = () => {
-    setStage('recall');
-    stats.current.lastActionTime = Date.now();
     resetIdleTimer();
     VoiceService.speakContext('daily_routine', 'start', language, false);
   };
 
-  // Step 5: User taps item from available pool -> places into sequence
+  // User taps item from available pool -> places into sequence
   const handleSelectPoolItem = (item: DisplayRoutineItem) => {
     if (stats.current.completed || isComplete) return;
     resetIdleTimer();
@@ -314,20 +295,10 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
 
   // Localized UI string dictionary
   const uiTexts = {
-    standardOrder: {
-      en: 'Standard Daily Order',
-      te: 'ప్రామాణిక దినచర్య క్రమం',
-      hi: 'दैनिक दिनचर्या का क्रम',
-    },
-    memorizeSubtitle: {
-      en: 'Observe the natural sequence of daily tasks below. Tap continue when ready.',
-      te: 'క్రింది పనుల క్రమాన్ని గమనించండి. సిద్ధంగా ఉన్నప్పుడు ప్రారంభించండి.',
-      hi: 'नीचे दिए गए कार्यों के क्रम को देखें। तैयार होने पर शुरू करें।',
-    },
-    btnStartSequence: {
-      en: 'I Remember, Start Sequence',
-      te: 'నాకు గుర్తుంది, క్రమాన్ని ప్రారంభించండి',
-      hi: 'मुझे याद है, क्रम शुरू करें',
+    subtitle: {
+      en: 'Arrange the daily tasks below in their natural order from first to last.',
+      te: 'క్రింది పనులను మొదటి నుండి చివరి వరకు సహజమైన వరుస క్రమంలో అమర్చండి.',
+      hi: 'नीचे दिए गए कार्यों को पहले से आखिरी तक उनके स्वाभाविक क्रम में व्यवस्थित करें।',
     },
     reconstructedTitle: {
       en: 'Reconstructed Sequence',
@@ -374,9 +345,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
           <span>📋</span> {t('games.routine.title', 'Daily Routine Recall')} — {scheduleTitle}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          {stage === 'memorize'
-            ? (uiTexts.memorizeSubtitle[language] || uiTexts.memorizeSubtitle.en)
-            : (uiTexts.tapTasksBelow[language] || uiTexts.tapTasksBelow.en)}
+          {uiTexts.subtitle[language] || uiTexts.subtitle.en}
         </p>
       </div>
 
@@ -391,43 +360,8 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
         <span className="hidden sm:inline text-[11px] font-mono text-slate-400">Level {difficulty}</span>
       </div>
 
-      {stage === 'memorize' ? (
-        /* Step 1: Memorize Stage */
-        <div className="w-full space-y-4 animate-in fade-in">
-          <div className="card p-6 border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20">
-            <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4">
-              {uiTexts.standardOrder[language] || uiTexts.standardOrder.en}: {scheduleTitle}
-            </h3>
-
-            <div className="space-y-2.5">
-              {targetSequence.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-3.5 shadow-xs"
-                >
-                  <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <span className="text-2xl">{item.emoji}</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-center pt-2">
-            <button
-              onClick={handleStartRecall}
-              className="elderly-btn-primary text-base py-3.5 px-8 rounded-xl inline-flex items-center gap-2 shadow-sm"
-            >
-              <span>{uiTexts.btnStartSequence[language] || uiTexts.btnStartSequence.en}</span>
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Step 2-5: Recall & Reconstructive Placement */
-        <div className="w-full space-y-6 animate-in fade-in">
+      {/* Sequence Placement & Available Tasks */}
+      <div className="w-full space-y-6 animate-in fade-in">
           {/* Target Reconstructed Sequence Slots */}
           <div className="card p-6 min-h-[160px]">
             <div className="flex justify-between items-center mb-3">
@@ -545,7 +479,6 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }
