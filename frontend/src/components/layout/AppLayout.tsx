@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import ThemeToggle from '../ThemeToggle';
+import { DemoPurposesFooterNotice } from '../DemoPurposesBanner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -248,6 +249,8 @@ export default function AppLayout({ children, mode = 'user' }: AppLayoutProps) {
         {/* PAGE CONTENT CONTAINER */}
         <main className="flex-1 flex flex-col p-3.5 sm:p-5 md:p-6 pb-20 md:pb-8 w-full max-w-full overflow-x-hidden">
           {children}
+          {/* Demo Purposes Notice (Requested by User) */}
+          <DemoPurposesFooterNotice />
         </main>
       </div>
 

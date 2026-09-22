@@ -319,7 +319,10 @@ export default function Welcome() {
       {/* 6. Clean Accessible Footer */}
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 py-6 px-4 sm:px-6 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <p>© {new Date().getFullYear()} MindMitra • Personal Behavioral Memory System</p>
+          <div>
+            <p>© {new Date().getFullYear()} MindMitra • Personal Behavioral Memory System</p>
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">This is for demo purposes</p>
+          </div>
           <div className="flex items-center gap-4 text-xs font-bold">
             <Link to="/home" className="hover:text-blue-600 dark:hover:text-blue-400">Home</Link>
             <Link to="/activities" className="hover:text-blue-600 dark:hover:text-blue-400">Activities</Link>
