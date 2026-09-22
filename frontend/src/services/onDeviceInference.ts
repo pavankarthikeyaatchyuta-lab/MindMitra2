@@ -7,15 +7,15 @@
 import modelData from './onDeviceModel.json';
 
 export interface OnDeviceFeatures {
-  accuracy: number;
-  mean_response_time_ms: number;
-  response_time_variance: number;
-  repeat_error_rate: number;
-  correction_rate: number;
-  completion_time_ms: number;
+  accuracy: number | null;
+  mean_response_time_ms: number | null;
+  response_time_variance?: number | null;
+  repeat_error_rate: number | null;
+  correction_rate: number | null;
+  completion_time_ms: number | null;
   current_difficulty: number;
-  previous_session_accuracy?: number;
-  recent_trend?: number;
+  previous_session_accuracy?: number | null;
+  recent_trend?: number | null;
 }
 
 export interface OnDeviceInferenceResult {
@@ -58,6 +58,7 @@ const typedModel = modelData as unknown as ModelJSON;
 
 /**
  * Executes on-device Random Forest inference.
+ * Unmeasured features are imputed using standard scaler means (z-score 0.0) without fabricating values.
  */
 export function predictOnDevice(
   features: OnDeviceFeatures,
@@ -65,22 +66,25 @@ export function predictOnDevice(
 ): OnDeviceInferenceResult {
   const startTime = performance.now();
 
-  const featureVector: number[] = [
-    features.accuracy ?? 0.75,
-    features.mean_response_time_ms ?? 2500,
-    features.response_time_variance ?? 0.15,
-    features.repeat_error_rate ?? 0.05,
-    features.correction_rate ?? 0.05,
-    features.completion_time_ms ?? 30000,
+  const rawFeatures: (number | null | undefined)[] = [
+    features.accuracy,
+    features.mean_response_time_ms,
+    features.response_time_variance,
+    features.repeat_error_rate,
+    features.correction_rate,
+    features.completion_time_ms,
     features.current_difficulty ?? currentDifficulty,
-    features.previous_session_accuracy ?? (features.accuracy ?? 0.75),
-    features.recent_trend ?? 0.0,
+    features.previous_session_accuracy ?? features.accuracy,
+    features.recent_trend,
   ];
 
-  // 1. Feature normalization with StandardScaler
-  const scaledVector: number[] = featureVector.map((val, idx) => {
+  // 1. Feature normalization with StandardScaler and mathematically neutral mean-imputation
+  const scaledVector: number[] = rawFeatures.map((val, idx) => {
     const mean = typedModel.scaler.mean[idx] ?? 0;
     const scale = typedModel.scaler.scale[idx] ?? 1;
+    if (val === null || val === undefined || isNaN(val)) {
+      return 0.0; // Mean imputation: (mean - mean) / scale === 0.0
+    }
     return (val - mean) / (scale === 0 ? 1 : scale);
   });
 
@@ -128,7 +132,7 @@ export function predictOnDevice(
   // Graceful Single-Mistake Guard:
   // An isolated mistake or momentary hesitation (accuracy >= 0.60, repeat_error_rate <= 0.15)
   // should NEVER penalize the user with a level drop. We maintain their level to encourage mastery.
-  const isSingleMistake = (features.accuracy ?? 0.75) >= 0.60 && (features.repeat_error_rate ?? 0) <= 0.15;
+  const isSingleMistake = features.accuracy !== null && features.accuracy >= 0.60 && (features.repeat_error_rate ?? 0) <= 0.15;
   if (recommendation === 'DECREASE' && isSingleMistake) {
     recommendation = 'MAINTAIN';
     confidence = Math.max(pMaintain, 0.78);
@@ -141,10 +145,10 @@ export function predictOnDevice(
 
   if (recommendation === 'DECREASE') {
     recommendedDifficulty = Math.max(1, currentDifficulty - 1);
-    if (features.accuracy < 0.5) {
+    if (features.accuracy !== null && features.accuracy < 0.5) {
       primaryFactor = 'Task accuracy below baseline';
       reason = 'Reducing complexity to restore comfort and positive engagement.';
-    } else if (features.mean_response_time_ms > 4500) {
+    } else if (features.mean_response_time_ms !== null && features.mean_response_time_ms > 4500) {
       primaryFactor = 'Extended response latency';
       reason = 'Adapting pace to accommodate careful, deliberate response patterns.';
     } else {

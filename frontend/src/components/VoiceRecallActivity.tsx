@@ -121,16 +121,18 @@ export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger,
     trackerRef.current.stop();
     if (selectedWords.length > 0 || transcript.trim().length > 0) {
       const now = Date.now();
-      const latency = Math.max(800, now - sessionStartTimeRef.current);
+      const latency = now - sessionStartTimeRef.current;
+      const totalCount = Math.max(selectedWords.length, transcript.split(/\s+/).filter(Boolean).length);
+      const completeness = Math.min(1.0, totalCount / Math.max(1, currentPrompt.expectedItemCount));
       const vector: VoiceBehavioralVector = {
         response_latency_ms: latency,
-        speech_duration_ms: 3500,
-        pause_duration_ms: 600,
-        number_of_pauses: Math.max(0, selectedWords.length - 1),
-        sequence_completeness: Math.min(1.0, Math.max(0.33, selectedWords.length / 3)),
-        task_completion: selectedWords.length >= 2,
-        transcript_confidence: 0.92,
-        word_count: Math.max(selectedWords.length, transcript.split(/\s+/).filter(Boolean).length, 1),
+        speech_duration_ms: null,
+        pause_duration_ms: null,
+        number_of_pauses: 0,
+        sequence_completeness: completeness,
+        task_completion: totalCount >= 2,
+        transcript_confidence: null,
+        word_count: totalCount,
         timestamp: new Date().toISOString(),
       };
       setResultVector(vector);
@@ -151,16 +153,17 @@ export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger,
       setTranscript(updated.join(', '));
 
       const now = Date.now();
-      const latency = Math.max(600, now - sessionStartTimeRef.current);
+      const latency = now - sessionStartTimeRef.current;
+      const completeness = Math.min(1.0, updated.length / Math.max(1, currentPrompt.expectedItemCount));
 
       const vector: VoiceBehavioralVector = {
         response_latency_ms: latency,
-        speech_duration_ms: 3000 + updated.length * 800,
-        pause_duration_ms: 500,
-        number_of_pauses: Math.max(0, updated.length - 1),
-        sequence_completeness: Math.min(1.0, updated.length / 3),
+        speech_duration_ms: null,
+        pause_duration_ms: null,
+        number_of_pauses: 0,
+        sequence_completeness: completeness,
         task_completion: updated.length >= 2,
-        transcript_confidence: 0.95,
+        transcript_confidence: null,
         word_count: updated.length,
         timestamp: new Date().toISOString(),
       };
@@ -183,15 +186,16 @@ export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger,
 
       if (updated.length >= 3) {
         const now = Date.now();
-        const latency = Math.max(700, now - sessionStartTimeRef.current);
+        const latency = now - sessionStartTimeRef.current;
+        const completeness = Math.min(1.0, updated.length / Math.max(1, currentPrompt.expectedItemCount));
         const vector: VoiceBehavioralVector = {
           response_latency_ms: latency,
-          speech_duration_ms: 3600,
-          pause_duration_ms: 700,
-          number_of_pauses: 2,
-          sequence_completeness: 1.0,
+          speech_duration_ms: null,
+          pause_duration_ms: null,
+          number_of_pauses: 0,
+          sequence_completeness: completeness,
           task_completion: true,
-          transcript_confidence: 0.98,
+          transcript_confidence: null,
           word_count: updated.length,
           timestamp: new Date().toISOString(),
         };
@@ -206,19 +210,20 @@ export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger,
     if (resultVector) {
       onComplete(resultVector);
     } else {
-      // Fallback baseline completion
-      const fallbackVector: VoiceBehavioralVector = {
-        response_latency_ms: 2200,
-        speech_duration_ms: 3500,
-        pause_duration_ms: 600,
-        number_of_pauses: 1,
-        sequence_completeness: 1.0,
-        task_completion: true,
-        transcript_confidence: 0.90,
-        word_count: Math.max(1, selectedWords.length || touchSelections.length),
+      const totalCount = selectedWords.length || touchSelections.length;
+      const completeness = totalCount > 0 ? Math.min(1.0, totalCount / Math.max(1, currentPrompt.expectedItemCount)) : 0;
+      const honestVector: VoiceBehavioralVector = {
+        response_latency_ms: null,
+        speech_duration_ms: null,
+        pause_duration_ms: null,
+        number_of_pauses: 0,
+        sequence_completeness: completeness,
+        task_completion: totalCount >= 2,
+        transcript_confidence: null,
+        word_count: totalCount,
         timestamp: new Date().toISOString(),
       };
-      onComplete(fallbackVector);
+      onComplete(honestVector);
     }
   };
 
@@ -401,7 +406,7 @@ export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger,
                   {language === 'te' ? 'ప్రతిస్పందన ఆలస్యం' : language === 'hi' ? 'प्रतिक्रिया विलंब' : 'First Latency'}
                 </span>
                 <span className="font-extrabold text-slate-900 dark:text-white">
-                  {(resultVector.response_latency_ms / 1000).toFixed(1)}s
+                  {resultVector.response_latency_ms !== null ? `${(resultVector.response_latency_ms / 1000).toFixed(1)}s` : 'Touch Mode'}
                 </span>
               </div>
               <div>
@@ -409,7 +414,7 @@ export default function VoiceRecallActivity({ onComplete, onCancel, hintTrigger,
                   {language === 'te' ? 'సంభాషణ సమయం' : language === 'hi' ? 'भाषण अवधि' : 'Speech Duration'}
                 </span>
                 <span className="font-extrabold text-slate-900 dark:text-white">
-                  {(resultVector.speech_duration_ms / 1000).toFixed(1)}s
+                  {resultVector.speech_duration_ms !== null ? `${(resultVector.speech_duration_ms / 1000).toFixed(1)}s` : 'N/A'}
                 </span>
               </div>
               <div>

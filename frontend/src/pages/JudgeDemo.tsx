@@ -59,8 +59,8 @@ export default function JudgeDemo() {
         status: bMet.status,
       },
       session: {
-        accuracy: feat.accuracy,
-        latencyMs: feat.mean_response_time_ms,
+        accuracy: feat.accuracy ?? 0,
+        latencyMs: feat.mean_response_time_ms ?? 0,
         corrections,
         hesitationCount: scenario === 'B' ? 5 : 0,
         activityType: 'TOUCH MEMORY MATCH',
@@ -122,7 +122,7 @@ export default function JudgeDemo() {
 
     await new Promise(r => setTimeout(r, 300));
     const sessionVec: SessionEvidenceVector = {
-      accuracy: featA.accuracy,
+      accuracy: featA.accuracy ?? 0,
       mean_response_time_ms: featA.mean_response_time_ms,
       corrections: 1,
       repeat_errors: 0,
@@ -223,7 +223,7 @@ export default function JudgeDemo() {
 
     await new Promise(r => setTimeout(r, 300));
     const sessionVec: SessionEvidenceVector = {
-      accuracy: featB.accuracy,
+      accuracy: featB.accuracy ?? 0,
       mean_response_time_ms: featB.mean_response_time_ms,
       corrections: 8,
       repeat_errors: 3,
@@ -505,11 +505,15 @@ export default function JudgeDemo() {
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Accuracy:</span>
-                      <span className="font-extrabold text-slate-900 dark:text-white">{Math.round(features.accuracy * 100)}%</span>
+                      <span className="font-extrabold text-slate-900 dark:text-white">
+                        {features.accuracy !== null ? `${Math.round(features.accuracy * 100)}%` : 'Not measured'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Mean Response:</span>
-                      <span className="font-extrabold text-slate-900 dark:text-white">{(features.mean_response_time_ms / 1000).toFixed(1)}s</span>
+                      <span className="font-extrabold text-slate-900 dark:text-white">
+                        {features.mean_response_time_ms !== null ? `${(features.mean_response_time_ms / 1000).toFixed(1)}s` : 'Not measured'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Variance:</span>

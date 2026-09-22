@@ -9,13 +9,13 @@
 import { Language } from '../types';
 
 export interface VoiceBehavioralVector {
-  response_latency_ms: number; // Time from prompt completion to first detected word
-  speech_duration_ms: number;   // Total duration of speech
-  pause_duration_ms: number;    // Cumulative pause/silence duration during response
+  response_latency_ms: number | null; // Time from prompt completion to first detected word (null if no speech detected)
+  speech_duration_ms: number | null;   // Total duration of speech (null if no speech detected)
+  pause_duration_ms: number | null;    // Cumulative pause/silence duration during response
   number_of_pauses: number;     // Number of inter-word hesitation pauses > 800ms
   sequence_completeness: number;// 0.0 - 1.0 (how many sequence target items were verbalized)
   task_completion: boolean;
-  transcript_confidence: number;
+  transcript_confidence: number | null; // Confidence score from speech recognition (null if unmeasured)
   word_count: number;
   timestamp: string;
 }
@@ -187,11 +187,11 @@ export class VoiceSensorTracker {
         const now = performance.now();
         const responseLatencyMs = this.firstWordTime > 0
           ? Math.round(this.firstWordTime - this.promptEndTime)
-          : 2500;
+          : null;
 
         const speechDurationMs = this.lastWordTime > 0 && this.firstWordTime > 0
           ? Math.round(this.lastWordTime - this.firstWordTime)
-          : 3500;
+          : null;
 
         const cumulativePauseDurationMs = this.pauses.reduce((a, b) => a + b, 0);
 
@@ -210,14 +210,14 @@ export class VoiceSensorTracker {
 
         const avgConfidence = this.recognitionCount > 0
           ? Math.round((this.confidenceSum / this.recognitionCount) * 100) / 100
-          : 0.88;
+          : null;
 
         onStatusChange('completed');
 
         const vector: VoiceBehavioralVector = {
-          response_latency_ms: Math.max(200, responseLatencyMs),
-          speech_duration_ms: Math.max(1000, speechDurationMs),
-          pause_duration_ms: Math.round(cumulativePauseDurationMs),
+          response_latency_ms: responseLatencyMs,
+          speech_duration_ms: speechDurationMs,
+          pause_duration_ms: this.pauses.length > 0 ? Math.round(cumulativePauseDurationMs) : null,
           number_of_pauses: this.pauses.length,
           sequence_completeness: Math.round(sequenceCompleteness * 100) / 100,
           task_completion: sequenceCompleteness >= 0.5 || this.wordsSpoken.length >= 2,

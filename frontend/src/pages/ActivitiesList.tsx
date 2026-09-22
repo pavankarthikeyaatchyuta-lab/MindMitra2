@@ -26,53 +26,53 @@ interface ActivityCardData {
 
 export default function ActivitiesList() {
   const navigate = useNavigate();
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
 
   const activities: ActivityCardData[] = [
     {
       id: 'memory',
       gameType: 'memory_match',
-      title: 'Memory Match',
-      domain: 'Short-Term Memory',
-      description: 'Turn over cards to find matching household and cultural items at your own comfortable pace.',
+      title: t('activities_page.memory_title', 'Memory Match'),
+      domain: t('activities_page.memory_domain', 'Short-Term Memory'),
+      description: t('activities_page.memory_desc', 'Turn over cards to find matching household and cultural items at your own comfortable pace.'),
       icon: '🧩',
-      telemetryNote: 'Measures card inspection cadence, touch hold duration, and correction hesitation.',
+      telemetryNote: t('activities_page.memory_telemetry', 'Measures card inspection cadence, touch hold duration, and correction hesitation.'),
     },
     {
       id: 'routine',
       gameType: 'daily_routine',
-      title: 'Daily Routine Recall',
-      domain: 'Sequential Memory',
-      description: 'Arrange daily activities (waking, tea, watering plants, lunch) in their natural chronological sequence.',
+      title: t('activities_page.routine_title', 'Daily Routine Recall'),
+      domain: t('activities_page.routine_domain', 'Sequential Memory'),
+      description: t('activities_page.routine_desc', 'Arrange daily activities (waking, tea, watering plants, lunch) in their natural chronological sequence.'),
       icon: '📋',
-      telemetryNote: 'Measures sequence selection latency, reordering swaps, and trial-and-error corrections.',
+      telemetryNote: t('activities_page.routine_telemetry', 'Measures sequence selection latency, reordering swaps, and trial-and-error corrections.'),
     },
     {
       id: 'recognition',
       gameType: 'object_recognition',
-      title: 'Visual Recall',
-      domain: 'Visual Memory',
-      description: 'Identify familiar everyday objects and family members uploaded with care.',
+      title: t('activities_page.recognition_title', 'Visual Recall'),
+      domain: t('activities_page.recognition_domain', 'Visual Memory'),
+      description: t('activities_page.recognition_desc', 'Identify familiar everyday objects and family members uploaded with care.'),
       icon: '🔍',
-      telemetryNote: 'Measures recognition latency, visual scanning pauses, and assisted prompts.',
+      telemetryNote: t('activities_page.recognition_telemetry', 'Measures recognition latency, visual scanning pauses, and assisted prompts.'),
     },
     {
       id: 'pattern',
       gameType: 'pattern_recall',
-      title: 'Pattern Recall',
-      domain: 'Spatial Attention',
-      description: 'Observe flash sequences and tap in pattern tempo to track sustained attention and motor cadence.',
+      title: t('activities_page.pattern_title', 'Pattern Recall'),
+      domain: t('activities_page.pattern_domain', 'Spatial Attention'),
+      description: t('activities_page.pattern_desc', 'Observe flash sequences and tap in pattern tempo to track sustained attention and motor cadence.'),
       icon: '✨',
-      telemetryNote: 'Measures pattern response tempo, tap cadence variance, and error recovery rate.',
+      telemetryNote: t('activities_page.pattern_telemetry', 'Measures pattern response tempo, tap cadence variance, and error recovery rate.'),
     },
     {
       id: 'voice',
       gameType: 'voice_recall',
-      title: 'Voice Recall',
-      domain: 'Verbal Memory',
-      description: 'Respond verbally to gentle everyday prompts to observe speech latency, response cadence, and natural pauses.',
+      title: t('activities_page.voice_title', 'Voice Recall'),
+      domain: t('activities_page.voice_domain', 'Verbal Memory'),
+      description: t('activities_page.voice_desc', 'Respond verbally to gentle everyday prompts to observe speech latency, response cadence, and natural pauses.'),
       icon: '🎙️',
-      telemetryNote: 'Measures speech reaction latency, verbal duration, and pauses via local speech API. Zero audio stored.',
+      telemetryNote: t('activities_page.voice_telemetry', 'Measures speech reaction latency, verbal duration, and pauses via local speech API. Zero audio stored.'),
     },
   ];
 
@@ -86,13 +86,13 @@ export default function ActivitiesList() {
         {/* Header */}
         <div className="text-left">
           <span className="text-[11px] uppercase font-black tracking-wider text-blue-600 dark:text-blue-400 block mb-0.5">
-            Cognitive Activities
+            {t('activities_page.badge', 'Cognitive Activities')}
           </span>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Daily Interaction Activities
+            {t('activities_page.title', 'Daily Interaction Activities')}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
-            Each activity is a controlled observation environment measuring your personal interaction rhythm.
+            {t('activities_page.subtitle', 'Each activity is a controlled observation environment measuring your personal interaction rhythm.')}
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export default function ActivitiesList() {
           {activities.map((act) => (
             <div
               key={act.id}
-              className="card p-3.5 sm:p-5 md:p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col gap-2.5 sm:gap-3.5"
+              className="card p-3.5 sm:p-5 md:p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-855 shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col gap-2.5 sm:gap-3.5"
             >
               <div className="flex items-start justify-between gap-2.5">
                 <div className="flex items-center gap-2.5 sm:gap-3.5">
@@ -146,7 +146,7 @@ export default function ActivitiesList() {
                   className="elderly-btn-primary py-2.5 sm:py-3 px-4 sm:px-6 text-xs sm:text-sm font-black flex items-center gap-1.5 sm:gap-2"
                 >
                   <Play size={15} className="fill-white" />
-                  <span>Start Activity</span>
+                  <span>{t('activities_page.start_button', 'Start Activity')}</span>
                 </Link>
               </div>
             </div>

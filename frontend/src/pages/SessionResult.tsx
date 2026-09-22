@@ -110,13 +110,22 @@ export default function SessionResult() {
     const activityTitle = titleMap[gameTypeKey] || 'Cognitive Activity';
 
     // Derive Personal Pattern & Baseline Status dynamically from PersonalBaselineEngine
-    const uid = currentUser?.id || 1;
+    let uid = currentUser ? currentUser.id : null;
+    if (!uid) {
+      const savedUser = localStorage.getItem('mindmitra_current_user');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          uid = parsed.id;
+        } catch {}
+      }
+    }
     const domain = gameTypeKey === 'daily_routine' ? 'routine' : gameTypeKey === 'memory_match' ? 'memory' : gameTypeKey;
     
     let consistency = 'Calibrating';
     let patternVerdict = 'Observing and learning your individual rhythm.';
 
-    if (rawAccuracy !== null && rawLatency !== null) {
+    if (uid && rawAccuracy !== null && rawLatency !== null) {
       const baselineEval = PersonalBaselineEngine.evaluateAgainstBaseline(
         uid,
         {
@@ -328,13 +337,13 @@ export default function SessionResult() {
             </p>
           </div>
 
-          {/* Genuine Multimodal Visual Behavioral Sensor Signals */}
-          {result.visualMetrics && result.visualMetrics.face_detected_ratio !== null ? (
+          {/* Genuine Multimodal Visual Presence & Interaction Sensor Signals */}
+          {result.visualMetrics && (result.visualMetrics.visual_presence_ratio !== null || result.visualMetrics.face_detected_ratio !== null) ? (
             <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 mb-3.5 space-y-2 text-left">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                   <Camera size={14} className="text-emerald-500" />
-                  Visual Behavioral Sensor Signals
+                  Visual Presence & Interaction Sensor
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300 font-bold">
                   On-Device Volatile
@@ -342,9 +351,9 @@ export default function SessionResult() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
                 <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] text-slate-400 block font-bold">Face Presence</span>
+                  <span className="text-[10px] text-slate-400 block font-bold">Visual Presence</span>
                   <span className="font-extrabold text-slate-900 dark:text-white">
-                    {Math.round((result.visualMetrics.face_detected_ratio || 0) * 100)}% frames
+                    {Math.round(((result.visualMetrics.visual_presence_ratio ?? result.visualMetrics.face_detected_ratio) || 0) * 100)}% frames
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -368,7 +377,7 @@ export default function SessionResult() {
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 mb-3.5 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <CameraOff size={14} className="text-slate-400" />
-                <span>Camera Sensor: Optional / Inactive</span>
+                <span>Visual Presence Sensor: Inactive / Not enabled</span>
               </div>
               <span className="text-[10px] uppercase font-bold text-slate-400">Touch & Cadence Recorded</span>
             </div>

@@ -5,11 +5,16 @@ import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
   accuracy: number;
-  avg_response_time_ms: number;
+  avg_response_time_ms: number | null;
+  response_times?: number[];
   repeat_errors: number;
   corrections: number;
-  completion_time_ms: number;
+  completion_time_ms: number | null;
   total_events: number;
+  first_interaction_latency_ms?: number | null;
+  hesitation_count?: number;
+  hesitation_duration_ms?: number;
+  max_hesitation_ms?: number;
 }
 
 export interface GameProps {
@@ -58,6 +63,11 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     corrections: 0,
     responseTimes: [] as number[],
     startTime: 0,
+    recallStartTime: 0,
+    firstInteractionLatencyMs: null as number | null,
+    hesitationCount: 0,
+    hesitationDurationMs: 0,
+    maxHesitationMs: 0,
     lastActionTime: 0
   });
 
@@ -186,15 +196,22 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
       correctRounds: 0,
       errors: 0,
       corrections: 0,
-      responseTimes: [],
+      responseTimes: [] as number[],
       startTime: Date.now(),
+      recallStartTime: 0,
+      firstInteractionLatencyMs: null as number | null,
+      hesitationCount: 0,
+      hesitationDurationMs: 0,
+      maxHesitationMs: 0,
       lastActionTime: Date.now()
     };
   };
 
   const startRecall = () => {
     setStage('recall');
-    stats.current.lastActionTime = Date.now();
+    const now = Date.now();
+    stats.current.recallStartTime = now;
+    stats.current.lastActionTime = now;
     resetIdleTimer();
   };
 
@@ -204,7 +221,18 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     resetIdleTimer();
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
+    if (stats.current.firstInteractionLatencyMs === null && stats.current.recallStartTime > 0) {
+      stats.current.firstInteractionLatencyMs = now - stats.current.recallStartTime;
+    }
     stats.current.responseTimes.push(rt);
+
+    // Track inter-tap hesitation >= 2000ms
+    if (rt >= 2000) {
+      stats.current.hesitationCount++;
+      stats.current.hesitationDurationMs += rt;
+      stats.current.maxHesitationMs = Math.max(stats.current.maxHesitationMs, rt);
+    }
+
     stats.current.lastActionTime = now;
 
     setSelectedOptionId(option.id);
@@ -244,19 +272,24 @@ export default function PatternRecall({ difficulty, userId, gameSessionId, onCom
     const now = Date.now();
     const totalTime = now - stats.current.startTime;
     const avgRt = stats.current.responseTimes.length > 0
-      ? stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length
-      : 2300;
+      ? Math.round(stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length)
+      : null;
 
     const totalEvents = stats.current.correctRounds + stats.current.errors;
-    const accuracy = stats.current.correctRounds / Math.max(1, totalEvents);
+    const accuracy = totalEvents > 0 ? (stats.current.correctRounds / totalEvents) : 0;
 
     onComplete({
-      accuracy: Math.min(1.0, Math.max(0.1, accuracy)),
+      accuracy: Math.min(1.0, Math.max(0.0, accuracy)),
       avg_response_time_ms: avgRt,
+      response_times: stats.current.responseTimes,
       repeat_errors: 0,
       corrections: stats.current.corrections,
       completion_time_ms: totalTime,
-      total_events: totalEvents
+      total_events: totalEvents,
+      first_interaction_latency_ms: stats.current.firstInteractionLatencyMs,
+      hesitation_count: stats.current.hesitationCount,
+      hesitation_duration_ms: stats.current.hesitationDurationMs,
+      max_hesitation_ms: stats.current.maxHesitationMs,
     });
   };
 

@@ -96,9 +96,12 @@ export default function MyPattern() {
   const sessionCount = history.length;
   const isCalibrating = sessionCount < 3;
 
-  const medianAcc = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.accuracy)) : 0.85;
-  const medianLat = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.mean_response_time_ms)) : 2000;
-  const medianCorr = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.corrections)) : 1;
+  const measuredAccs = history.map(s => s.accuracy).filter((a): a is number => typeof a === 'number');
+  const medianAcc = measuredAccs.length > 0 ? PersonalBaselineEngine.calculateMedian(measuredAccs) : null;
+  const measuredLats = history.map(s => s.mean_response_time_ms).filter((l): l is number => typeof l === 'number' && l !== null);
+  const medianLat = measuredLats.length > 0 ? PersonalBaselineEngine.calculateMedian(measuredLats) : null;
+  const measuredCorrs = history.map(s => s.corrections).filter((c): c is number => typeof c === 'number');
+  const medianCorr = measuredCorrs.length > 0 ? PersonalBaselineEngine.calculateMedian(measuredCorrs) : null;
 
   const latest = sessionCount > 0 ? history[sessionCount - 1] : null;
   const currentBaseline = latest && currentUser
@@ -111,7 +114,7 @@ export default function MyPattern() {
   const chartData = history.map((s, idx) => ({
     session: `S${idx + 1}`,
     accuracy: Math.round(s.accuracy * 100),
-    latency: Number((s.mean_response_time_ms / 1000).toFixed(1)),
+    latency: s.mean_response_time_ms !== null ? Number((s.mean_response_time_ms / 1000).toFixed(1)) : 0,
     level: s.difficulty,
   }));
 
@@ -199,7 +202,7 @@ export default function MyPattern() {
               Typical Accuracy
             </span>
             <span className="text-xl sm:text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-              {sessionCount > 0 ? `${Math.round(medianAcc * 100)}%` : '--'}
+              {medianAcc !== null ? `${Math.round(medianAcc * 100)}%` : '--'}
             </span>
             <span className="text-[9px] sm:text-[10px] text-slate-400 block mt-0.5">Median</span>
           </div>
@@ -209,7 +212,7 @@ export default function MyPattern() {
               Tap Latency
             </span>
             <span className="text-xl sm:text-2xl md:text-3xl font-black text-blue-600 dark:text-blue-400">
-              {sessionCount > 0 ? `${(medianLat / 1000).toFixed(1)}s` : '--'}
+              {medianLat !== null ? `${(medianLat / 1000).toFixed(1)}s` : '--'}
             </span>
             <span className="text-[9px] sm:text-[10px] text-slate-400 block mt-0.5">Speed</span>
           </div>
@@ -219,7 +222,7 @@ export default function MyPattern() {
               Corrections
             </span>
             <span className="text-xl sm:text-2xl md:text-3xl font-black text-purple-600 dark:text-purple-400">
-              {sessionCount > 0 ? medianCorr : '--'}
+              {medianCorr !== null ? medianCorr : '--'}
             </span>
             <span className="text-[9px] sm:text-[10px] text-slate-400 block mt-0.5">Per Activity</span>
           </div>
@@ -314,7 +317,7 @@ export default function MyPattern() {
                       {Math.round(sess.accuracy * 100)}%
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">
-                      {(sess.mean_response_time_ms / 1000).toFixed(1)}s latency
+                      {sess.mean_response_time_ms !== null ? `${(sess.mean_response_time_ms / 1000).toFixed(1)}s latency` : 'Not measured'}
                     </span>
                   </div>
                 </div>

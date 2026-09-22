@@ -6,14 +6,18 @@ import { Lightbulb, ArrowRight, Eye } from 'lucide-react';
 
 export interface GameMetrics {
   accuracy: number;
-  avg_response_time_ms: number;
+  avg_response_time_ms: number | null;
   repeat_errors: number;
   corrections: number;
-  completion_time_ms: number;
+  completion_time_ms: number | null;
   total_events: number;
-  study_duration_ms?: number;
-  first_interaction_latency_ms?: number;
+  study_duration_ms?: number | null;
+  first_interaction_latency_ms?: number | null;
   mismatches?: number;
+  response_times?: number[];
+  hesitation_count?: number;
+  hesitation_duration_ms?: number;
+  max_hesitation_ms?: number;
 }
 
 export interface GameProps {
@@ -71,10 +75,13 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     corrections: 0,
     responseTimes: [] as number[],
     studyStartTime: 0,
-    studyDuration: 0,
+    studyDuration: null as number | null,
     recallStartTime: 0,
     firstInteractionTime: 0,
-    firstLatency: 0,
+    firstLatency: null as number | null,
+    hesitationCount: 0,
+    hesitationDurationMs: 0,
+    maxHesitationMs: 0,
     lastActionTime: 0,
     seenCards: new Set<string>(),
     completed: false
@@ -146,10 +153,13 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
       corrections: 0,
       responseTimes: [],
       studyStartTime: now,
-      studyDuration: 0,
+      studyDuration: null as number | null,
       recallStartTime: 0,
       firstInteractionTime: 0,
-      firstLatency: 0,
+      firstLatency: null as number | null,
+      hesitationCount: 0,
+      hesitationDurationMs: 0,
+      maxHesitationMs: 0,
       lastActionTime: now,
       seenCards: new Set<string>(),
       completed: false
@@ -185,7 +195,7 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     const now = Date.now();
     const actualStudyDuration = stats.current.studyStartTime > 0
       ? now - stats.current.studyStartTime
-      : 7000;
+      : null;
 
     stats.current.phase = 'recall';
     stats.current.studyDuration = actualStudyDuration;
@@ -270,6 +280,14 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
 
     const rt = now - (stats.current.lastActionTime || now);
     stats.current.responseTimes.push(rt);
+
+    // Track genuine hesitation: inter-tap intervals >= 2000ms
+    if (rt >= 2000) {
+      stats.current.hesitationCount++;
+      stats.current.hesitationDurationMs += rt;
+      stats.current.maxHesitationMs = Math.max(stats.current.maxHesitationMs, rt);
+    }
+
     stats.current.lastActionTime = now;
     stats.current.flips++;
 
@@ -327,11 +345,11 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     const now = Date.now();
     const recallDuration = stats.current.recallStartTime > 0
       ? now - stats.current.recallStartTime
-      : 5000;
+      : null;
 
     const avgRt = stats.current.responseTimes.length > 0
       ? stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length
-      : 1800;
+      : null;
 
     // Accuracy formula:
     // With study preview, repeat mismatches are the primary error signal.
@@ -340,15 +358,19 @@ export default function MemoryMatch({ difficulty, userId, gameSessionId, onCompl
     const accuracy = stats.current.matches / Math.max(1, stats.current.matches + penalizableErrors);
 
     onComplete({
-      accuracy: Math.min(1.0, Math.max(0.1, accuracy)),
-      avg_response_time_ms: Math.round(avgRt),
+      accuracy: Math.min(1.0, Math.max(0.0, accuracy)),
+      avg_response_time_ms: avgRt !== null ? Math.round(avgRt) : null,
+      response_times: stats.current.responseTimes,
       repeat_errors: stats.current.repeatErrors,
       corrections: stats.current.errors,
       completion_time_ms: recallDuration,
       total_events: stats.current.flips,
       study_duration_ms: stats.current.studyDuration,
-      first_interaction_latency_ms: stats.current.firstLatency || Math.round(avgRt),
+      first_interaction_latency_ms: stats.current.firstInteractionTime > 0 ? stats.current.firstLatency : null,
       mismatches: stats.current.errors,
+      hesitation_count: stats.current.hesitationCount,
+      hesitation_duration_ms: stats.current.hesitationDurationMs,
+      max_hesitation_ms: stats.current.maxHesitationMs,
     });
   };
 

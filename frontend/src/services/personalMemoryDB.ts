@@ -30,15 +30,15 @@ export interface StoredSessionEvidence {
   userId: number;
   domain: string; // 'memory', 'routine', 'visual', 'overall'
   accuracy: number;
-  mean_response_time_ms: number;
+  mean_response_time_ms: number | null;
   corrections: number;
   repeat_errors: number;
-  completion_time_ms: number;
+  completion_time_ms: number | null;
   difficulty: number;
   timestamp: string;
   telemetryDetails?: {
-    firstInteractionLatencyMs?: number;
-    responseTimeVariance?: number;
+    firstInteractionLatencyMs?: number | null;
+    responseTimeVariance?: number | null;
     hesitationCount?: number;
     totalTaps?: number;
   };

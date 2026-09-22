@@ -21,16 +21,16 @@ export interface PersonalBaselineMetrics {
 
 export interface SessionEvidenceVector {
   accuracy: number;
-  mean_response_time_ms: number;
+  mean_response_time_ms: number | null;
   corrections: number;
   repeat_errors: number;
-  completion_time_ms: number;
+  completion_time_ms: number | null;
   difficulty: number;
   hesitation_count?: number;
   micro_hesitation_count?: number;
   macro_hesitation_count?: number;
-  mean_hold_duration_ms?: number;
-  response_time_variance?: number;
+  mean_hold_duration_ms?: number | null;
+  response_time_variance?: number | null;
   timestamp: string;
 }
 
@@ -205,9 +205,9 @@ export class PersonalBaselineEngine {
         domain,
         eligibleSessionCount: count,
         baselineMedianAccuracy: currentSession.accuracy,
-        baselineMedianLatencyMs: currentSession.mean_response_time_ms,
+        baselineMedianLatencyMs: currentSession.mean_response_time_ms ?? 0,
         baselineMedianCorrections: currentSession.corrections,
-        baselineMedianCompletionTimeMs: currentSession.completion_time_ms,
+        baselineMedianCompletionTimeMs: currentSession.completion_time_ms ?? 0,
         baselineStdDev: 0.05,
         baselineRobustStdDev: 0.05,
         status: 'CALIBRATING',
@@ -220,16 +220,16 @@ export class PersonalBaselineEngine {
 
     // Calculate baseline medians from history (prior sessions)
     const accuracies = history.map(s => s.accuracy);
-    const latencies = history.map(s => s.mean_response_time_ms);
+    const latencies = history.map(s => s.mean_response_time_ms).filter((l): l is number => typeof l === 'number' && l !== null);
     const correctionsList = history.map(s => s.corrections);
-    const completionTimes = history.map(s => s.completion_time_ms);
-    const holdTimes = history.map(s => s.mean_hold_duration_ms).filter((h): h is number => typeof h === 'number');
+    const completionTimes = history.map(s => s.completion_time_ms).filter((c): c is number => typeof c === 'number' && c !== null);
+    const holdTimes = history.map(s => s.mean_hold_duration_ms).filter((h): h is number => typeof h === 'number' && h !== null);
     const hesitations = history.map(s => s.hesitation_count).filter((h): h is number => typeof h === 'number');
 
     const medianAcc = this.calculateMedian(accuracies);
-    const medianLat = this.calculateMedian(latencies);
+    const medianLat = latencies.length > 0 ? this.calculateMedian(latencies) : (currentSession.mean_response_time_ms ?? 0);
     const medianCorr = this.calculateMedian(correctionsList);
-    const medianComp = this.calculateMedian(completionTimes);
+    const medianComp = completionTimes.length > 0 ? this.calculateMedian(completionTimes) : (currentSession.completion_time_ms ?? 0);
     const medianHold = holdTimes.length > 0 ? this.calculateMedian(holdTimes) : undefined;
     const medianHes = hesitations.length > 0 ? this.calculateMedian(hesitations) : undefined;
 
@@ -238,7 +238,9 @@ export class PersonalBaselineEngine {
 
     // Multi-signal deviation calculation
     const accDelta = currentSession.accuracy - medianAcc;
-    const latencyPctChange = (currentSession.mean_response_time_ms - medianLat) / Math.max(medianLat, 1);
+    const latencyPctChange = currentSession.mean_response_time_ms !== null && medianLat > 0
+      ? (currentSession.mean_response_time_ms - medianLat) / medianLat
+      : 0;
     const corrDelta = currentSession.corrections - medianCorr;
     const hesCount = currentSession.hesitation_count || 0;
 

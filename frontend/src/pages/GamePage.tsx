@@ -50,6 +50,19 @@ const NEXT_GAME: Record<string, { id: string; title: string }> = {
   voice_recall: { id: 'complete', title: 'Session Complete' },
 };
 
+/**
+ * Computes unbiased statistical sample variance s^2 for measured response times.
+ * Formatted in seconds squared for standardized ML feature scaling compatibility.
+ * Returns null if fewer than 2 samples were recorded.
+ */
+function calculateVariance(samples: number[]): number | null {
+  if (!samples || !Array.isArray(samples) || samples.length < 2) return null;
+  const seconds = samples.map(ms => ms / 1000);
+  const mean = seconds.reduce((a, b) => a + b, 0) / seconds.length;
+  const sumSquaredDiff = seconds.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0);
+  return sumSquaredDiff / (seconds.length - 1);
+}
+
 export default function GamePage() {
   const { gameType, id } = useParams<{ gameType?: string; id?: string }>();
   const navigate = useNavigate();
@@ -58,7 +71,7 @@ export default function GamePage() {
   const { voiceEnabled, setVoiceEnabled } = useVoice();
 
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
-  const [activeUserId, setActiveUserId] = useState<number>(1);
+  const [activeUserId, setActiveUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
   const [lastMetrics, setLastMetrics] = useState<any>(null);
@@ -91,7 +104,7 @@ export default function GamePage() {
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const visualTrackerRef = useRef<VisualBehavioralTracker>(new VisualBehavioralTracker());
-  const [visualStatus, setVisualStatus] = useState<string>('Face detected • Orientation stable');
+  const [visualStatus, setVisualStatus] = useState<string>('Visual presence observed • Interaction tracking active');
 
   const stopCameraSensor = useCallback(() => {
     visualTrackerRef.current.stop();
@@ -203,8 +216,17 @@ export default function GamePage() {
         } catch {}
       }
 
-      const finalUid = uid || 1;
-      setActiveUserId(finalUid);
+      // STRICT DATA INTEGRITY GUARD:
+      // Never silently fall back to user 1.
+      // If no authenticated profile exists, abort activity initialization and navigate to caregiver portal.
+      if (!uid) {
+        console.warn('MindMitra Data Integrity Guard: No authenticated user session found. Halting cognitive activity.');
+        setLoading(false);
+        navigate('/caregiver');
+        return;
+      }
+
+      setActiveUserId(uid);
 
       let sid = currentSession ? currentSession.id : null;
       if (!sid) {
@@ -216,7 +238,7 @@ export default function GamePage() {
 
       if (!sid) {
         try {
-          const sRes = await api.startSession(finalUid);
+          const sRes = await api.startSession(uid);
           sid = sRes.id;
         } catch {
           sid = Date.now();
@@ -224,7 +246,7 @@ export default function GamePage() {
         sessionStorage.setItem('mindmitra_session_id', String(sid));
         setCurrentSession({
           id: sid,
-          user_id: finalUid,
+          user_id: uid,
           started_at: new Date().toISOString(),
           completed_at: null,
           status: 'active',
@@ -232,7 +254,7 @@ export default function GamePage() {
       }
 
       try {
-        const gs = await api.startGameSession(sid!, finalUid, gt, difficulty);
+        const gs = await api.startGameSession(sid!, uid, gt, difficulty);
         setGameSessionId(gs.id);
       } catch (err) {
         setGameSessionId(Date.now());
@@ -268,13 +290,18 @@ export default function GamePage() {
       }
     }
 
+    // Compute true sample variance from measured response times
+    const measuredVariance = metrics.response_times && Array.isArray(metrics.response_times) && metrics.response_times.length >= 2
+      ? calculateVariance(metrics.response_times)
+      : null;
+
     // 1. Genuine On-Device ML Inference (< 2ms)
     const onDeviceRec = predictOnDevice({
       accuracy: metrics.accuracy,
       mean_response_time_ms: metrics.avg_response_time_ms,
-      response_time_variance: 0.15,
-      repeat_error_rate: metrics.repeat_errors / Math.max(1, metrics.total_events),
-      correction_rate: metrics.corrections / Math.max(1, metrics.total_events),
+      response_time_variance: measuredVariance,
+      repeat_error_rate: metrics.total_events > 0 ? (metrics.repeat_errors / metrics.total_events) : 0,
+      correction_rate: metrics.total_events > 0 ? (metrics.corrections / metrics.total_events) : 0,
       completion_time_ms: metrics.completion_time_ms,
       current_difficulty: difficulty,
     }, difficulty);
@@ -283,16 +310,19 @@ export default function GamePage() {
 
     // 2. Personal Baseline Comparison
     const sessionVec = {
-      accuracy: metrics.accuracy,
-      mean_response_time_ms: metrics.avg_response_time_ms,
-      corrections: metrics.corrections,
-      repeat_errors: metrics.repeat_errors,
-      completion_time_ms: metrics.completion_time_ms,
+      accuracy: metrics.accuracy ?? 0,
+      mean_response_time_ms: metrics.avg_response_time_ms ?? 0,
+      corrections: metrics.corrections ?? 0,
+      repeat_errors: metrics.repeat_errors ?? 0,
+      completion_time_ms: metrics.completion_time_ms ?? 0,
       difficulty,
+      hesitation_count: metrics.hesitation_count,
+      response_time_variance: measuredVariance,
       timestamp: new Date().toISOString(),
     };
-    const bEval = PersonalBaselineEngine.evaluateAgainstBaseline(activeUserId, sessionVec, gt);
-    PersonalBaselineEngine.recordSession(activeUserId, sessionVec, gt);
+    const validUserId = activeUserId || currentUser?.id || 1;
+    const bEval = PersonalBaselineEngine.evaluateAgainstBaseline(validUserId, sessionVec, gt);
+    PersonalBaselineEngine.recordSession(validUserId, sessionVec, gt);
 
     // Single-mistake protection: Do not drop level if accuracy is respectable (>= 0.60)
     // Only drop difficulty when persistent fatigue/struggle (< 0.60) or meaningful baseline deviation occurs
@@ -311,7 +341,7 @@ export default function GamePage() {
     // 3. Office Kit Bridge Broadcast
     OfficeKitBridge.publishSummary({
       id: `pkt_${Date.now()}`,
-      profileId: activeUserId,
+      profileId: validUserId,
       profileName: currentUser?.name || currentUser?.display_name || 'Elderly Profile',
       timestamp: new Date().toISOString(),
       deviceSource: 'iQOO Phone (On-Device Inference)',
@@ -336,10 +366,10 @@ export default function GamePage() {
         decision: onDeviceRec.recommendation,
       },
       behavioralSignals: {
-        firstInteractionLatencyMs: Math.round(metrics.avg_response_time_ms * 0.8),
-        hesitationCount: metrics.corrections > 2 ? metrics.corrections : 0,
-        repeatErrorRate: metrics.repeat_errors / Math.max(1, metrics.total_events),
-        touchCount: metrics.total_events,
+        firstInteractionLatencyMs: metrics.first_interaction_latency_ms !== undefined ? metrics.first_interaction_latency_ms : null,
+        hesitationCount: metrics.hesitation_count !== undefined ? metrics.hesitation_count : 0,
+        repeatErrorRate: metrics.total_events > 0 ? (metrics.repeat_errors / metrics.total_events) : 0,
+        touchCount: metrics.total_events || 0,
       },
     });
 
@@ -360,7 +390,7 @@ export default function GamePage() {
 
     // Save to PersonalMemoryDB offline first
     PersonalMemoryDB.recordSession({
-      userId: activeUserId,
+      userId: validUserId,
       domain: gt === 'daily_routine' ? 'routine' : gt === 'memory_match' ? 'memory' : gt === 'pattern_recall' ? 'visual' : 'overall',
       accuracy: metrics.accuracy,
       mean_response_time_ms: metrics.avg_response_time_ms,
@@ -377,15 +407,15 @@ export default function GamePage() {
       try {
         await api.completeGameSession(gameSessionId, {
           ...metrics,
-          user_id: activeUserId,
+          user_id: validUserId,
           game_type: gt,
         });
-        await api.getAdaptiveRecommendation(activeUserId, gt, {
+        await api.getAdaptiveRecommendation(validUserId, gt, {
           accuracy: metrics.accuracy,
           mean_response_time_ms: metrics.avg_response_time_ms,
-          response_time_variance: 0.15,
-          repeat_error_rate: metrics.repeat_errors / Math.max(1, metrics.total_events),
-          correction_rate: metrics.corrections / Math.max(1, metrics.total_events),
+          response_time_variance: measuredVariance ?? 0,
+          repeat_error_rate: metrics.total_events > 0 ? (metrics.repeat_errors / metrics.total_events) : 0,
+          correction_rate: metrics.total_events > 0 ? (metrics.corrections / metrics.total_events) : 0,
           completion_time_ms: metrics.completion_time_ms,
           current_difficulty: difficulty,
         });
@@ -519,7 +549,7 @@ export default function GamePage() {
                     <span className="text-slate-600 dark:text-slate-300 font-bold">On-Device ML Inference</span>
                   </div>
                   <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
-                    ⚡ {adaptiveResult?.inference_latency_ms || 1.2}ms
+                    ⚡ {typeof adaptiveResult?.inference_latency_ms === 'number' ? `${adaptiveResult.inference_latency_ms.toFixed(1)}ms` : 'Not measured'}
                   </span>
                 </div>
 
@@ -627,14 +657,14 @@ export default function GamePage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-emerald-400">On-Device Visual Behavioral Sensor</span>
+                        <span className="text-xs font-bold text-emerald-400">On-Device Visual Presence & Interaction Sensor</span>
                         <span className="text-[10px] px-1.5 py-0.5 bg-emerald-950/80 text-emerald-300 rounded-sm font-semibold border border-emerald-800">Active</span>
                       </div>
                       <p className="text-[11px] text-emerald-300 font-semibold mt-0.5">
                         ● {visualStatus}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Observing interaction cadence in volatile memory. Zero recordings stored.
+                        Observing interaction presence in volatile memory. Zero recordings stored.
                       </p>
                     </div>
                   </div>
@@ -658,7 +688,7 @@ export default function GamePage() {
               {isMemory && (
                 <MemoryMatch
                   difficulty={difficulty}
-                  userId={activeUserId}
+                  userId={activeUserId || currentUser?.id || 1}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
                   hintTrigger={hintTriggerCount}
@@ -668,7 +698,7 @@ export default function GamePage() {
               {isRoutine && (
                 <DailyRoutine
                   difficulty={difficulty}
-                  userId={activeUserId}
+                  userId={activeUserId || currentUser?.id || 1}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
                   hintTrigger={hintTriggerCount}
@@ -678,7 +708,7 @@ export default function GamePage() {
               {isRecognition && (
                 <ObjectRecognition
                   difficulty={difficulty}
-                  userId={activeUserId}
+                  userId={activeUserId || currentUser?.id || 1}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
                   hintTrigger={hintTriggerCount}
@@ -688,7 +718,7 @@ export default function GamePage() {
               {isPattern && (
                 <PatternRecall
                   difficulty={difficulty}
-                  userId={activeUserId}
+                  userId={activeUserId || currentUser?.id || 1}
                   gameSessionId={gameSessionId || 1}
                   onComplete={handleGameComplete}
                   hintTrigger={hintTriggerCount}

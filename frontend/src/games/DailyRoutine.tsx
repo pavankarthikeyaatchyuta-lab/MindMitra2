@@ -6,11 +6,16 @@ import { VoiceService } from '../services/voiceService';
 
 export interface GameMetrics {
   accuracy: number;
-  avg_response_time_ms: number;
+  avg_response_time_ms: number | null;
   repeat_errors: number;
   corrections: number;
-  completion_time_ms: number;
+  completion_time_ms: number | null;
   total_events: number;
+  response_times?: number[];
+  first_interaction_latency_ms?: number | null;
+  hesitation_count?: number;
+  hesitation_duration_ms?: number;
+  max_hesitation_ms?: number;
   visual_metrics?: any;
 }
 
@@ -110,9 +115,12 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
   const lastHintTriggerRef = useRef(hintTrigger);
 
   const stats = useRef({
-    firstInteractionLatencyMs: 0,
+    firstInteractionLatencyMs: null as number | null,
     responseTimes: [] as number[],
     corrections: 0,
+    hesitationCount: 0,
+    hesitationDurationMs: 0,
+    maxHesitationMs: 0,
     startTime: 0,
     lastActionTime: 0,
     completed: false,
@@ -194,9 +202,12 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     setIsComplete(false);
 
     stats.current = {
-      firstInteractionLatencyMs: 0,
-      responseTimes: [],
+      firstInteractionLatencyMs: null as number | null,
+      responseTimes: [] as number[],
       corrections: 0,
+      hesitationCount: 0,
+      hesitationDurationMs: 0,
+      maxHesitationMs: 0,
       startTime: Date.now(),
       lastActionTime: Date.now(),
       completed: false,
@@ -212,10 +223,18 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
 
     const now = Date.now();
     const rt = now - (stats.current.lastActionTime || now);
-    if (stats.current.firstInteractionLatencyMs === 0) {
+    if (stats.current.firstInteractionLatencyMs === null) {
       stats.current.firstInteractionLatencyMs = rt;
     }
     stats.current.responseTimes.push(rt);
+
+    // Track inter-tap hesitation >= 2000ms
+    if (rt >= 2000) {
+      stats.current.hesitationCount++;
+      stats.current.hesitationDurationMs += rt;
+      stats.current.maxHesitationMs = Math.max(stats.current.maxHesitationMs, rt);
+    }
+
     stats.current.lastActionTime = now;
 
     const newSelected = [...selectedItems, item];
@@ -263,7 +282,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     const totalTime = now - stats.current.startTime;
     const avgRt = stats.current.responseTimes.length > 0
       ? stats.current.responseTimes.reduce((a, b) => a + b, 0) / stats.current.responseTimes.length
-      : 2400;
+      : null;
 
     // Evaluate matching sequence positions
     let correctMatches = 0;
@@ -273,8 +292,7 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
       }
     });
 
-    const accuracy = correctMatches / targetSequence.length;
-    const errors = targetSequence.length - correctMatches;
+    const accuracy = targetSequence.length > 0 ? (correctMatches / targetSequence.length) : 0;
 
     // Trigger vocal feedback
     if (accuracy >= 0.7) {
@@ -284,12 +302,17 @@ export default function DailyRoutine({ difficulty, userId, gameSessionId, onComp
     }
 
     onComplete({
-      accuracy: Math.min(1.0, Math.max(0.1, accuracy)),
-      avg_response_time_ms: Math.round(avgRt),
+      accuracy: Math.min(1.0, Math.max(0.0, accuracy)),
+      avg_response_time_ms: avgRt !== null ? Math.round(avgRt) : null,
+      response_times: stats.current.responseTimes,
       repeat_errors: 0,
       corrections: stats.current.corrections,
       completion_time_ms: totalTime,
       total_events: targetSequence.length + stats.current.corrections,
+      first_interaction_latency_ms: stats.current.firstInteractionLatencyMs,
+      hesitation_count: stats.current.hesitationCount,
+      hesitation_duration_ms: stats.current.hesitationDurationMs,
+      max_hesitation_ms: stats.current.maxHesitationMs,
     });
   };
 

@@ -8,17 +8,17 @@
  */
 
 export interface TouchBehavioralVector {
-  first_interaction_latency_ms: number;
-  mean_inter_tap_latency_ms: number;
-  response_time_variance: number;
+  first_interaction_latency_ms: number | null;
+  mean_inter_tap_latency_ms: number | null;
+  response_time_variance: number | null;
   hesitation_count: number;
   micro_hesitation_count?: number; // Pauses between 1500ms - 3000ms
   macro_hesitation_count?: number; // Pauses >= 3000ms
-  mean_hold_duration_ms?: number; // Down-to-up contact duration
-  hold_duration_variance?: number; // Motor interaction rhythm stability
+  mean_hold_duration_ms?: number | null; // Down-to-up contact duration
+  hold_duration_variance?: number | null; // Motor interaction rhythm stability
   repeat_error_rate: number;
   correction_rate: number;
-  completion_time_ms: number;
+  completion_time_ms: number | null;
   accuracy: number;
   total_taps: number;
   current_difficulty: number;
@@ -143,34 +143,35 @@ export class TouchSensorTracker {
 
     const firstInteractionLatencyMs = this.firstTapTime > 0
       ? Math.round(this.firstTapTime - this.startTime)
-      : Math.min(completionTimeMs, 2000);
+      : null;
 
     const intervals = this.interTapIntervals;
     const meanInterTapLatencyMs = intervals.length > 0
       ? Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length)
-      : firstInteractionLatencyMs || 2200;
+      : null;
 
-    // Variance calculation (normalized to 0.0 - 1.0)
-    let variance = 0.15;
-    if (intervals.length > 1) {
-      const mean = meanInterTapLatencyMs;
-      const squaredDiffs = intervals.map(x => Math.pow(x - mean, 2));
-      const rawVariance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
-      variance = Math.min(1.0, Math.round((Math.sqrt(rawVariance) / Math.max(mean, 1000)) * 100) / 100);
+    // Sample variance in seconds^2 for ML consistency; null if < 2 intervals
+    let variance: number | null = null;
+    if (intervals.length >= 2) {
+      const intervalsSec = intervals.map(x => x / 1000);
+      const meanSec = intervalsSec.reduce((a, b) => a + b, 0) / intervalsSec.length;
+      const squaredDiffs = intervalsSec.map(x => Math.pow(x - meanSec, 2));
+      const s2 = squaredDiffs.reduce((a, b) => a + b, 0) / (intervalsSec.length - 1);
+      variance = Math.round(s2 * 10000) / 10000;
     }
 
     // Hold duration metrics (contact motor consistency)
     const holds = this.holdDurations;
     const meanHoldDurationMs = holds.length > 0
       ? Math.round(holds.reduce((a, b) => a + b, 0) / holds.length)
-      : 180;
+      : null;
 
-    let holdVariance = 0.10;
-    if (holds.length > 1) {
-      const meanHold = meanHoldDurationMs;
+    let holdVariance: number | null = null;
+    if (holds.length >= 2) {
+      const meanHold = holds.reduce((a, b) => a + b, 0) / holds.length;
       const squaredHoldDiffs = holds.map(x => Math.pow(x - meanHold, 2));
-      const rawHoldVar = squaredHoldDiffs.reduce((a, b) => a + b, 0) / holds.length;
-      holdVariance = Math.min(1.0, Math.round((Math.sqrt(rawHoldVar) / Math.max(meanHold, 100)) * 100) / 100);
+      const s2Hold = squaredHoldDiffs.reduce((a, b) => a + b, 0) / (holds.length - 1);
+      holdVariance = Math.round(s2Hold * 10) / 10;
     }
 
     const accuracy = overrideAccuracy !== undefined

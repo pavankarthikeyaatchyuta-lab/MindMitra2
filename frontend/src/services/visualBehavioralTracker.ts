@@ -1,23 +1,24 @@
 /**
- * MindMitra - Genuine On-Device Visual Behavioral Sensor Engine
+ * MindMitra - Genuine On-Device Visual Presence & Interaction Sensor Engine
  * 
  * Captures non-clinical, non-diagnostic visual interaction signals in local volatile memory:
- * - Face presence ratio (fraction of frames where face is observed facing device)
- * - Head movement score (variance of optical centroid displacements)
+ * - Visual presence ratio (fraction of frames where presence is observed facing device)
+ * - Movement score (variance of optical centroid displacements)
  * - Orientation stability (consistency of facing screen center)
- * - Visual hesitation intervals (intervals where face is attentive but no touch occurs)
+ * - Visual hesitation intervals (intervals where elder is attentive but no touch occurs)
  * 
- * STRICT PRIVACY GUARANTEE:
+ * STRICT PRIVACY & HONESTY GUARANTEE:
  * - All frame analysis happens locally on-device inside offscreen canvas memory.
- * - Zero raw video frames, snapshots, or face crops are EVER saved to disk, indexedDB, or sent across network.
- * - Zero emotion labels ("Happy", "Sad", "Confused") and zero medical/clinical inferences.
+ * - Zero raw video frames, snapshots, or crops are EVER saved to disk, indexedDB, or sent across network.
+ * - Zero emotion labels ("Happy", "Sad", "Confused"), zero facial recognition claims, zero dementia diagnosis claims.
  */
 
 export interface VisualBehavioralMetrics {
-  face_detected_ratio: number | null; // 0.0 to 1.0 (null if sensor inactive/denied)
-  head_movement_score: number | null; // 0.0 to 1.0 (null if sensor inactive)
+  visual_presence_ratio: number | null; // 0.0 to 1.0 (null if sensor inactive/denied)
+  face_detected_ratio?: number | null;  // Backwards-compatible alias to visual_presence_ratio
+  head_movement_score: number | null;   // 0.0 to 1.0 (null if sensor inactive)
   orientation_stability: number | null; // 0.0 to 1.0 (null if sensor inactive)
-  visual_hesitation_ms: number | null; // Cumulative ms attentive without touch
+  visual_hesitation_ms: number | null;  // Cumulative ms attentive without touch
   total_sampled_frames: number;
   status_summary: string;
 }
@@ -172,6 +173,7 @@ export class VisualBehavioralTracker {
   public getCurrentMetrics(): VisualBehavioralMetrics {
     if (this.totalFrames === 0) {
       return {
+        visual_presence_ratio: null,
         face_detected_ratio: null,
         head_movement_score: null,
         orientation_stability: null,
@@ -181,7 +183,7 @@ export class VisualBehavioralTracker {
       };
     }
 
-    const faceRatio = Math.round((this.detectedFrames / this.totalFrames) * 100) / 100;
+    const presenceRatio = Math.round((this.detectedFrames / this.totalFrames) * 100) / 100;
 
     // Movement score: mean centroid displacement normalized (0.0 to 1.0)
     let movementScore: number | null = null;
@@ -199,12 +201,12 @@ export class VisualBehavioralTracker {
     }
 
     const summaryParts: string[] = [];
-    if (faceRatio >= 0.7) {
-      summaryParts.push(`Face detected (${Math.round(faceRatio * 100)}% frames)`);
-    } else if (faceRatio >= 0.3) {
-      summaryParts.push(`Face intermittently observed (${Math.round(faceRatio * 100)}%)`);
+    if (presenceRatio >= 0.7) {
+      summaryParts.push(`Visual presence observed (${Math.round(presenceRatio * 100)}% frames)`);
+    } else if (presenceRatio >= 0.3) {
+      summaryParts.push(`Visual presence intermittently observed (${Math.round(presenceRatio * 100)}%)`);
     } else {
-      summaryParts.push('Limited face presence observed');
+      summaryParts.push('Limited visual presence observed');
     }
 
     if (orientationStability !== null) {
@@ -216,7 +218,8 @@ export class VisualBehavioralTracker {
     }
 
     return {
-      face_detected_ratio: faceRatio,
+      visual_presence_ratio: presenceRatio,
+      face_detected_ratio: presenceRatio,
       head_movement_score: movementScore,
       orientation_stability: orientationStability,
       visual_hesitation_ms: Math.round(this.cumulativeHesitationMs),

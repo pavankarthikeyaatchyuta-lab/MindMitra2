@@ -177,9 +177,12 @@ export default function PersonalPatternExperience() {
   const activeUserId = selectedUser ? selectedUser.id : 1;
   const sessionCount = history.length;
   const isCalibrating = sessionCount < 3;
-  const baselineMedianAcc = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.accuracy)) : null;
-  const baselineMedianLat = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.mean_response_time_ms)) : null;
-  const baselineMedianCorr = sessionCount > 0 ? PersonalBaselineEngine.calculateMedian(history.map(s => s.corrections)) : null;
+  const measuredAccs = history.map(s => s.accuracy).filter((a): a is number => typeof a === 'number');
+  const baselineMedianAcc = measuredAccs.length > 0 ? PersonalBaselineEngine.calculateMedian(measuredAccs) : null;
+  const measuredLats = history.map(s => s.mean_response_time_ms).filter((l): l is number => typeof l === 'number' && l !== null);
+  const baselineMedianLat = measuredLats.length > 0 ? PersonalBaselineEngine.calculateMedian(measuredLats) : null;
+  const measuredCorrs = history.map(s => s.corrections).filter((c): c is number => typeof c === 'number');
+  const baselineMedianCorr = measuredCorrs.length > 0 ? PersonalBaselineEngine.calculateMedian(measuredCorrs) : null;
 
   const latestSession = sessionCount > 0 ? history[sessionCount - 1] : null;
   const currentBaseline = latestSession 
@@ -225,14 +228,18 @@ export default function PersonalPatternExperience() {
   // Process Completed Voice Recall
   const handleVoiceComplete = (vVector: VoiceBehavioralVector) => {
     setVoiceVector(vVector);
+    const speechDur = vVector.speech_duration_ms ?? 0;
+    const respLat = vVector.response_latency_ms;
+    const completionTime = respLat !== null ? (speechDur + respLat) : null;
+
     const approxTouch: TouchBehavioralVector = {
-      first_interaction_latency_ms: vVector.response_latency_ms,
-      mean_inter_tap_latency_ms: vVector.response_latency_ms,
-      response_time_variance: 0.15,
+      first_interaction_latency_ms: respLat,
+      mean_inter_tap_latency_ms: respLat,
+      response_time_variance: null,
       hesitation_count: vVector.number_of_pauses,
-      repeat_error_rate: 0.05,
-      correction_rate: 0.05,
-      completion_time_ms: vVector.speech_duration_ms + vVector.response_latency_ms,
+      repeat_error_rate: 0.0,
+      correction_rate: 0.0,
+      completion_time_ms: completionTime,
       accuracy: vVector.sequence_completeness,
       total_taps: vVector.word_count,
       current_difficulty: currentDifficulty,
@@ -243,16 +250,15 @@ export default function PersonalPatternExperience() {
   };
 
   // Process Completed Camera Recall
-  // Process Completed Camera Recall
   const handleCameraComplete = (success: boolean, latencyMs: number, recallType?: 'self_confirmed' | 'assisted') => {
     const approxTouch: TouchBehavioralVector = {
       first_interaction_latency_ms: latencyMs,
       mean_inter_tap_latency_ms: latencyMs,
-      response_time_variance: 0.10,
+      response_time_variance: null,
       hesitation_count: recallType === 'assisted' ? 1 : 0,
       repeat_error_rate: 0.0,
       correction_rate: recallType === 'assisted' ? 0.15 : 0.0,
-      completion_time_ms: latencyMs + 1000,
+      completion_time_ms: latencyMs,
       accuracy: success ? 1.0 : (recallType === 'assisted' ? 0.75 : 0.60),
       total_taps: 1,
       current_difficulty: currentDifficulty,
@@ -321,7 +327,7 @@ export default function PersonalPatternExperience() {
       },
       session: {
         accuracy: tVector.accuracy,
-        latencyMs: tVector.mean_inter_tap_latency_ms,
+        latencyMs: tVector.mean_inter_tap_latency_ms ?? 0,
         corrections: sessionVector.corrections,
         hesitationCount: tVector.hesitation_count,
         activityType: activityMode.toUpperCase(),
@@ -670,7 +676,7 @@ export default function PersonalPatternExperience() {
                               {Math.round(sess.accuracy * 100)}%
                             </span>
                             <span className="text-[10px] text-slate-500">
-                              {(sess.mean_response_time_ms / 1000).toFixed(1)}s
+                              {sess.mean_response_time_ms !== null ? `${(sess.mean_response_time_ms / 1000).toFixed(1)}s` : 'Not measured'}
                             </span>
                           </div>
                         </div>

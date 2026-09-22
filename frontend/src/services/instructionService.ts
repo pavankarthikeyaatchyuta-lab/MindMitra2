@@ -448,9 +448,9 @@ export class InstructionService {
         hi: 'शुरू करें',
       },
       voice_unavailable: {
-        en: 'Voice assistance is unavailable on this device. Tap anywhere to continue.',
-        te: 'ఈ పరికరంలో వాయిస్ అందుబాటులో లేదు. కొనసాగించడానికి స్క్రీన్‌పై తాకండి.',
-        hi: 'इस उपकरण पर आवाज़ उपलब्ध नहीं है। जारी रखने के लिए स्क्रीन को छुएं।',
+        en: 'Telugu voice is unavailable on this device. Text guidance remains available.',
+        te: 'ఈ పరికరంలో తెలుగు వాయిస్ అందుబాటులో లేదు. టెక్స్ట్ సూచనలు అందుబాటులో ఉన్నాయి.',
+        hi: 'इस उपकरण पर हिंदी आवाज़ उपलब्ध नहीं है। लिखित निर्देश उपलब्ध हैं।',
       },
     };
     return table[key]?.[lang] || table[key]?.en || '';
