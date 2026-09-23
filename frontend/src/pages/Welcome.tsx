@@ -83,7 +83,7 @@ export default function Welcome() {
       <section className="pt-8 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6 max-w-5xl mx-auto flex flex-col items-center text-center">
         <div className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-[11px] sm:text-xs font-black uppercase tracking-wider mb-4 sm:mb-6 shadow-xs">
           <Sparkles size={13} className="text-blue-600 dark:text-blue-400" />
-          <span>iQOO Hackathon 2026 • Phone-First Behavioral Memory</span>
+          <span>Phone-First Behavioral Memory</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.12] max-w-4xl">
@@ -321,7 +321,6 @@ export default function Welcome() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
           <div>
             <p>© {new Date().getFullYear()} MindMitra • Personal Behavioral Memory System</p>
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">This is for demo purposes</p>
           </div>
           <div className="flex items-center gap-4 text-xs font-bold">
             <Link to="/home" className="hover:text-blue-600 dark:hover:text-blue-400">Home</Link>

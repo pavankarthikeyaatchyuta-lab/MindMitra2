@@ -5,7 +5,6 @@ import { CallProvider } from './context/CallContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './i18n';
 import { WifiOff } from 'lucide-react';
-import { DemoPurposesTopBanner, DemoPurposesFooterNotice } from './components/DemoPurposesBanner';
 
 // Public Pages
 const Welcome = lazy(() => import('./pages/Welcome'));
@@ -65,9 +64,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)] transition-colors duration-150">
-      {/* Demo Purposes Notice (Requested by User) */}
-      <DemoPurposesTopBanner />
-
       {/* Offline Status */}
       <OfflineBanner />
 
@@ -138,9 +134,6 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-
-      {/* Demo Purposes Footer (Requested by User) */}
-      <DemoPurposesFooterNotice />
     </div>
   );
 }
